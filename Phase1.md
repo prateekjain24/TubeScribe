@@ -289,6 +289,11 @@ Verification:
 **Dependencies:** SETUP-003
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/downloader.py` with module skeleton and Rich logging (`RichHandler`).
+- Included `is_youtube_url()` helper and placeholders (`fetch_metadata`) for next ticket.
+
 ### DOWNLOAD-002: Implement Metadata Fetcher
 **Acceptance Criteria:**
 - Function to run yt-dlp --dump-json
