@@ -318,6 +318,13 @@ Verification:
 **Dependencies:** DOWNLOAD-001
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Added robust URL helpers in `ytx/src/ytx/downloader.py`:
+  - `extract_video_id(url)` supports `watch?v=`, `youtu.be/`, `shorts/`, `live/`, `embed/`, and bare IDs; enforces 11‑char ID.
+  - `is_youtube_url(url)` uses `extract_video_id`.
+  - `canonical_url(video_id)` returns `https://youtu.be/<id>`.
+
 ### DOWNLOAD-004: Implement Audio Download
 **Acceptance Criteria:**
 - Download with yt-dlp -f bestaudio
@@ -326,6 +333,12 @@ Verification:
 **Technical Notes:** Use --audio-quality 0
 **Dependencies:** DOWNLOAD-002
 **Time:** 4 hours
+
+Status: Completed
+Verification:
+- Implemented `download_audio(meta, out_dir, audio_format='m4a', audio_quality='0')` in `ytx/src/ytx/downloader.py`.
+- Uses `yt-dlp --no-playlist -f bestaudio/best -x --audio-format m4a --audio-quality 0 -o '<dir>/%(id)s.%(ext)s'` and validates expected output.
+- Checks for `yt-dlp` and `ffmpeg` presence; supports cookies options; skips when file exists unless `overwrite=True`.
 
 ### DOWNLOAD-005: Add Download Progress Bar
 **Acceptance Criteria:**

@@ -8,6 +8,7 @@ Actual metadata fetching via yt-dlp is implemented in DOWNLOAD-002.
 
 import logging
 import re
+from pathlib import Path
 from typing import Final, Any
 
 from rich.logging import RichHandler
@@ -29,15 +30,71 @@ if not logger.handlers:
     logger.propagate = False
 
 
-_YOUTUBE_RE = re.compile(
-    r"^(?:https?://)?(?:www\.)?(?:youtube\.com/(?:watch\?v=|live/|shorts/)|youtu\.be/)[A-Za-z0-9_-]{6,}$",
-    re.IGNORECASE,
-)
+_YT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+_HOST_RE = re.compile(r"^(?:.+\.)?(youtube\.com|youtu\.be|youtube-nocookie\.com)$", re.I)
+
+
+def extract_video_id(url: str) -> str | None:
+    """Extract the 11-char YouTube video ID from common URL shapes.
+
+    Supports:
+    - https://www.youtube.com/watch?v=VIDEOID
+    - https://youtu.be/VIDEOID
+    - https://www.youtube.com/shorts/VIDEOID
+    - https://www.youtube.com/live/VIDEOID
+    - https://www.youtube.com/embed/VIDEOID
+    - music.youtube.com/watch?v=VIDEOID
+    Ignores extra params like `t=`, `si=`, `feature=`.
+    """
+    from urllib.parse import urlparse, parse_qs
+
+    s = url.strip()
+    if not s:
+        return None
+    # Handle bare IDs passed by user
+    if _YT_ID_RE.match(s):
+        return s
+
+    parsed = urlparse(s)
+    host = (parsed.netloc or "").lower()
+    host = host.split(":")[0]
+    if not _HOST_RE.match(host):
+        return None
+
+    path = parsed.path or ""
+    # youtu.be/<id>
+    if host.endswith("youtu.be"):
+        parts = [p for p in path.split("/") if p]
+        if parts:
+            candidate = parts[0]
+            return candidate if _YT_ID_RE.match(candidate) else None
+
+    # youtube.com/watch?v=<id>
+    qs = parse_qs(parsed.query)
+    v = qs.get("v", [None])[0]
+    if v and _YT_ID_RE.match(v):
+        return v
+
+    # youtube.com/shorts/<id>, /live/<id>, /embed/<id>
+    parts = [p for p in path.split("/") if p]
+    if parts:
+        if parts[0] in {"shorts", "live", "embed"} and len(parts) >= 2:
+            candidate = parts[1]
+            return candidate if _YT_ID_RE.match(candidate) else None
+
+    return None
 
 
 def is_youtube_url(url: str) -> bool:
-    """Lightweight YouTube URL format check (supports youtu.be and youtube.com)."""
-    return bool(_YOUTUBE_RE.match(url.strip()))
+    """Return True if URL appears to reference a specific YouTube video."""
+    return extract_video_id(url) is not None
+
+
+def canonical_url(video_id: str) -> str:
+    """Return a canonical short URL for the given video id."""
+    if not _YT_ID_RE.match(video_id):
+        raise ValueError("Invalid YouTube video id")
+    return f"https://youtu.be/{video_id}"
 
 
 class YTDLPError(RuntimeError):
@@ -147,3 +204,94 @@ def fetch_metadata(
         raise YTDLPError("Missing video id in yt-dlp output")
     logger.info("Fetched metadata: id=%s title=%s", vm.id, (vm.title or ""))
     return vm
+
+
+class FFmpegNotFound(RuntimeError):
+    pass
+
+
+def _ensure_ffmpeg() -> None:
+    import shutil
+
+    if not shutil.which("ffmpeg"):
+        raise FFmpegNotFound("ffmpeg is required for audio extraction; please install it")
+
+
+def download_audio(
+    meta: VideoMetadata,
+    out_dir: Path,
+    *,
+    audio_format: str = "m4a",
+    audio_quality: str = "0",
+    overwrite: bool = False,
+    timeout: int = 60 * 30,
+    cookies_from_browser: str | None = None,
+    cookies_file: str | None = None,
+) -> Path:
+    """Download best audio and extract to requested format.
+
+    Returns the path to the extracted audio file (e.g. <out_dir>/<id>.m4a).
+    """
+    import shutil
+    import subprocess
+
+    if not shutil.which("yt-dlp"):
+        raise YTDLPError("yt-dlp is not installed or not on PATH")
+    _ensure_ffmpeg()
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    expected = out_dir / f"{meta.id}.{audio_format}"
+    if expected.exists() and not overwrite:
+        logger.info("Audio exists, skipping download: %s", expected)
+        return expected
+
+    # Use yt-dlp to extract bestaudio and convert to target format via ffmpeg
+    cmd = [
+        "yt-dlp",
+        "--no-playlist",
+        "-f",
+        "bestaudio/best",
+        "--extract-audio",
+        "--audio-format",
+        audio_format,
+        "--audio-quality",
+        audio_quality,
+        "--continue",
+        "--no-part",
+        "--no-mtime",
+        "-o",
+        str(out_dir / "%(id)s.%(ext)s"),
+        meta.url,
+    ]
+    if cookies_from_browser:
+        cmd.extend(["--cookies-from-browser", cookies_from_browser])
+    if cookies_file:
+        cmd.extend(["--cookies", cookies_file])
+
+    logger.info("Downloading audio for %s → %s", meta.id, expected.name)
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise YTDLPError(f"yt-dlp download timed out after {timeout}s") from e
+
+    if proc.returncode != 0:
+        stderr_tail = (proc.stderr or "").strip().splitlines()[-10:]
+        raise YTDLPError("yt-dlp download failed: %s" % (" | ".join(stderr_tail)))
+
+    # Validate expected output exists
+    if not expected.exists():
+        # Attempt to find the file by id with any extension (rare mismatch)
+        for p in out_dir.glob(f"{meta.id}.*"):
+            if p.is_file():
+                return p
+        raise YTDLPError(f"expected audio file not found: {expected}")
+
+    return expected
