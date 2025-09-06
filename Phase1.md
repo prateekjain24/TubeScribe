@@ -478,6 +478,13 @@ Verification:
 **Dependencies:** EXPORT-001
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/exporters/base.py` with:
+  - Time formatting helpers: `s_to_srt_time()`, `s_to_vtt_time()`.
+  - Atomic writer: `write_atomic(path, data)` ensuring safe writes.
+  - `FileExporter` base providing `target_path(doc, out_dir)` and an abstract `export()` to be implemented by concrete exporters.
+
 ### EXPORT-003: Implement JSON Exporter
 **Acceptance Criteria:**
 - Create json_exporter.py
