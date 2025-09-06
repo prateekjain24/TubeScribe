@@ -1,0 +1,9 @@
+1
+00:00:00,000 --> 00:00:02,000
+This is a fairly long line that should
+wrap across two lines nicely for better readability.
+
+2
+00:00:02,000 --> 00:00:03,000
+Short one
+

@@ -523,6 +523,12 @@ Verification:
 **Dependencies:** EXPORT-002
 **Time:** 4 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/exporters/srt_exporter.py` with `SRTExporter`.
+- Uses `srt` library with `timedelta` conversion; enforces monotonic timestamps (nudges overlaps by 1ms).
+- Wrapped content limited to 1–2 lines using whitespace boundaries.
+
 ### EXPORT-006: Add SRT Line Breaking
 **Acceptance Criteria:**
 - Split long lines (32-80 chars)
@@ -531,6 +537,11 @@ Verification:
 **Technical Notes:** Preserve word boundaries
 **Dependencies:** EXPORT-005
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Implemented `wrap_caption(text, line_width=42, max_lines=2)` using `textwrap.wrap` without breaking words; collapses remainder into last line when exceeding `max_lines`.
+- `SRTExporter` exposes `line_width`/`max_lines` to tune wrapping.
 
 ### EXPORT-007: Implement Caption Numbering
 **Acceptance Criteria:**
