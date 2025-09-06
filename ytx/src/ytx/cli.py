@@ -4,9 +4,11 @@ from importlib.metadata import PackageNotFoundError, version
 
 import typer
 from rich.console import Console
+from .logging import configure_logging
 
 app = typer.Typer(
     no_args_is_help=True,
+    invoke_without_command=True,
     add_completion=False,
     help="ytx: YouTube transcription CLI (Whisper/Gemini)",
     pretty_exceptions_enable=False,
@@ -24,10 +26,21 @@ def _pkg_version() -> str:
 
 
 @app.callback()
-def _root(verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output")) -> None:
+def _root(
+    verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
+    version_flag: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        is_eager=True,
+        help="Show ytx version and exit",
+    ),
+) -> None:
     """CLI foundation and global options."""
-    # Placeholder for global options; rich console is configured per-command.
-    _ = verbose
+    if version_flag:
+        console.print(f"ytx v{_pkg_version()}")
+        raise typer.Exit(code=0)
+    configure_logging(verbose=verbose)
 
 
 @app.command()

@@ -611,6 +611,11 @@ Verification:
 **Dependencies:** CLI-001
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Global `--version`/`-V` flag added on the app callback; uses `importlib.metadata.version` with fallback.
+- `invoke_without_command=True` ensures the callback runs without a subcommand; `uv run ytx --version` prints `ytx v0.1.0`.
+
 ### CLI-004: Setup Logging Module
 **Acceptance Criteria:**
 - Create logging.py
@@ -619,6 +624,11 @@ Verification:
 **Technical Notes:** Use rich.console.Console
 **Dependencies:** SETUP-004
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/logging.py` with `configure_logging(verbose: bool)` using RichHandler and root logging.
+- CLI callback calls `configure_logging(verbose=...)` to set INFO/DEBUG levels.
 
 ### CLI-005: Add Verbose Flag
 **Acceptance Criteria:**
