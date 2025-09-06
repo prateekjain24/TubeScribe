@@ -159,6 +159,11 @@ Verification:
 **Dependencies:** MODEL-001
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Implemented `TranscriptSegment` in `ytx/src/ytx/models.py` with fields: `id`, `start`, `end`, `text`, `confidence`.
+- Uses shared `Seconds` and `NonEmptyStr` types; validator enforces `end > start`.
+
 ### MODEL-003: Define Chapter Model
 **Acceptance Criteria:**
 - Create Chapter model with title, start, end, summary

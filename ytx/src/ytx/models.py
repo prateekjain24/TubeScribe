@@ -50,3 +50,34 @@ __all__ = [
     "NonEmptyStr",
 ]
 
+
+# Transcript models
+from pydantic import Field, model_validator
+
+
+class TranscriptSegment(ModelBase):
+    """A continuous spoken segment with timing and text.
+
+    Notes on confidence:
+    - Range and meaning depend on engine. For Whisper it may be a log-probability
+      (often negative). For LLM-based engines it may be omitted.
+    """
+
+    id: int = Field(ge=0)
+    start: Seconds
+    end: Seconds
+    text: NonEmptyStr
+    confidence: float | None = None
+
+    @model_validator(mode="after")
+    def _validate_times(self) -> "TranscriptSegment":
+        if self.end <= self.start:
+            raise ValueError("end must be greater than start")
+        return self
+
+    @property
+    def duration(self) -> float:
+        return float(self.end - self.start)
+
+
+__all__.append("TranscriptSegment")
