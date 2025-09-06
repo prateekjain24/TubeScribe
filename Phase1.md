@@ -227,6 +227,12 @@ Verification:
 **Dependencies:** MODEL-006
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Added `config_hash()` and `_hash_input()` to `ytx/src/ytx/config.py` using SHA256 of sorted JSON (orjson fallback to stdlib).
+- `_hash_input` includes: engine, model, language (if set), device, compute_type.
+- Runtime check via `uv run` prints deterministic hash for defaults.
+
 ### MODEL-008: Add Environment Loading
 **Acceptance Criteria:**
 - Load .env file with python-dotenv

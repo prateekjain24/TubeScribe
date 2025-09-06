@@ -12,6 +12,7 @@ dependencies = [
     "httpx>=0.28.1",
     "orjson>=3.11.3",
     "pydantic>=2.10.6",
+    "pydantic-settings>=2.8.1",
     "python-dotenv>=1.0.1",
     "rich>=13.9.4",
     "srt>=3.5.3",
