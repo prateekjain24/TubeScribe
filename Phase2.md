@@ -1,0 +1,773 @@
+# Phase 2: Advanced Features & Optimization
+
+## Overview
+Phase 2 adds advanced capabilities including Gemini integration, intelligent caching, chapter processing, summarization, and production hardening.
+
+**Duration**: ~65 tickets × 3 hours average = 195 hours (~5 weeks at full-time)
+**Goal**: Production-ready tool with cloud transcription, caching, and advanced features
+
+---
+
+## Sprint 7: Caching System (10 tickets)
+
+### CACHE-001: Create cache.py Module
+**Acceptance Criteria:**
+- Create cache.py with path utilities
+- Define cache directory structure
+- Use XDG standards for cache location
+**Technical Notes:** Default ~/.cache/ytx/
+**Dependencies:** Phase 1 complete
+**Time:** 2 hours
+
+### CACHE-002: Implement Cache Path Builder
+**Acceptance Criteria:**
+- Generate paths based on video_id, engine, model
+- Include config hash in path
+- Create nested directory structure
+**Technical Notes:** video_id/engine/model/hash/
+**Dependencies:** CACHE-001
+**Time:** 3 hours
+
+### CACHE-003: Add Cache Existence Check
+**Acceptance Criteria:**
+- Check if artifacts exist for config
+- Verify file integrity
+- Return boolean status
+**Technical Notes:** Check all expected files
+**Dependencies:** CACHE-002
+**Time:** 2 hours
+
+### CACHE-004: Implement Artifact Reader
+**Acceptance Criteria:**
+- Load cached transcript.json
+- Parse with orjson
+- Return TranscriptDoc object
+**Technical Notes:** Handle corrupted cache
+**Dependencies:** CACHE-003
+**Time:** 3 hours
+
+### CACHE-005: Add Atomic Write Operations
+**Acceptance Criteria:**
+- Write to temp file first
+- Atomic move to final location
+- Handle concurrent writes
+**Technical Notes:** Use tempfile.NamedTemporaryFile
+**Dependencies:** CACHE-002
+**Time:** 3 hours
+
+### CACHE-006: Create Cache Metadata
+**Acceptance Criteria:**
+- Write meta.json with cache info
+- Include creation time, version
+- Add source information
+**Technical Notes:** Track ytx version
+**Dependencies:** CACHE-005
+**Time:** 2 hours
+
+### CACHE-007: Implement Cache List Command
+**Acceptance Criteria:**
+- List all cached transcripts
+- Show video titles and dates
+- Display cache size
+**Technical Notes:** Walk cache directory
+**Dependencies:** CACHE-001
+**Time:** 3 hours
+
+### CACHE-008: Add Cache Clear Command
+**Acceptance Criteria:**
+- Clear all cache safely
+- Option to clear specific video
+- Confirmation prompt
+**Technical Notes:** Use shutil.rmtree carefully
+**Dependencies:** CACHE-007
+**Time:** 3 hours
+
+### CACHE-009: Implement Cache Statistics
+**Acceptance Criteria:**
+- Calculate total cache size
+- Count cached videos
+- Show disk usage
+**Technical Notes:** Use os.stat for sizes
+**Dependencies:** CACHE-007
+**Time:** 2 hours
+
+### CACHE-010: Add Cache Expiration
+**Acceptance Criteria:**
+- Optional TTL for cache entries
+- Clean old entries on startup
+- Configurable via environment
+**Technical Notes:** Default no expiration
+**Dependencies:** CACHE-006
+**Time:** 3 hours
+
+---
+
+## Sprint 8: Gemini Engine Core (15 tickets)
+
+### GEMINI-001: Create Gemini Engine Module
+**Acceptance Criteria:**
+- Create gemini_engine.py
+- Import google-generativeai
+- Basic class structure
+**Technical Notes:** Handle missing API key
+**Dependencies:** WHISPER-002
+**Time:** 2 hours
+
+### GEMINI-002: Implement API Key Loading
+**Acceptance Criteria:**
+- Load GEMINI_API_KEY from environment
+- Validate key format
+- Clear error if missing
+**Technical Notes:** Use genai.configure()
+**Dependencies:** GEMINI-001
+**Time:** 2 hours
+
+### GEMINI-003: Setup Model Configuration
+**Acceptance Criteria:**
+- Configure gemini-2.5-flash model
+- Set generation parameters
+- Handle model errors
+**Technical Notes:** Use GenerativeModel class
+**Dependencies:** GEMINI-002
+**Time:** 3 hours
+
+### GEMINI-004: Create Audio File Handler
+**Acceptance Criteria:**
+- Upload audio file to Gemini
+- Handle file size limits
+- Return file reference
+**Technical Notes:** Use genai.upload_file()
+**Dependencies:** GEMINI-003
+**Time:** 3 hours
+
+### GEMINI-005: Build Transcription Prompt
+**Acceptance Criteria:**
+- Create prompt for accurate transcription
+- Request JSON format with timestamps
+- Include formatting instructions
+**Technical Notes:** Specify exact JSON schema
+**Dependencies:** GEMINI-003
+**Time:** 3 hours
+
+### GEMINI-006: Implement Basic Transcription
+**Acceptance Criteria:**
+- Send audio to Gemini
+- Get transcription response
+- Parse JSON output
+**Technical Notes:** Use generate_content()
+**Dependencies:** GEMINI-004, GEMINI-005
+**Time:** 4 hours
+
+### GEMINI-007: Add Response Parser
+**Acceptance Criteria:**
+- Parse Gemini JSON response
+- Extract segments with timestamps
+- Handle malformed responses
+**Technical Notes:** Use try/except for parsing
+**Dependencies:** GEMINI-006
+**Time:** 3 hours
+
+### GEMINI-008: Implement Audio Chunking
+**Acceptance Criteria:**
+- Split long audio into 5-10 min chunks
+- Add 2 second overlaps
+- Track chunk offsets
+**Technical Notes:** Use ffmpeg for splitting
+**Dependencies:** GEMINI-006
+**Time:** 4 hours
+
+### GEMINI-009: Add Chunk Processing Loop
+**Acceptance Criteria:**
+- Process each chunk sequentially
+- Adjust timestamps by offset
+- Collect all segments
+**Technical Notes:** Maintain order
+**Dependencies:** GEMINI-008
+**Time:** 3 hours
+
+### GEMINI-010: Implement Segment Stitching
+**Acceptance Criteria:**
+- Merge overlapping segments
+- Remove duplicate text
+- Maintain time continuity
+**Technical Notes:** Compare overlap regions
+**Dependencies:** GEMINI-009
+**Time:** 4 hours
+
+### GEMINI-011: Add Rate Limit Handling
+**Acceptance Criteria:**
+- Detect rate limit errors
+- Implement exponential backoff
+- Use tenacity for retries
+**Technical Notes:** Max 3 retries
+**Dependencies:** GEMINI-006
+**Time:** 3 hours
+
+### GEMINI-012: Implement Cost Estimation
+**Acceptance Criteria:**
+- Calculate token usage
+- Estimate cost before processing
+- Warn user if > $1
+**Technical Notes:** $0.30 per M tokens audio
+**Dependencies:** GEMINI-006
+**Time:** 3 hours
+
+### GEMINI-013: Add Batch Mode Support
+**Acceptance Criteria:**
+- Enable batch API for 50% discount
+- Handle async responses
+- Implement polling
+**Technical Notes:** Optional via flag
+**Dependencies:** GEMINI-006
+**Time:** 4 hours
+
+### GEMINI-014: Create Fallback Strategy
+**Acceptance Criteria:**
+- Fallback to Whisper on Gemini error
+- Log fallback reason
+- Notify user
+**Technical Notes:** Configurable behavior
+**Dependencies:** GEMINI-006
+**Time:** 3 hours
+
+### GEMINI-015: Wire Up Gemini Pipeline
+**Acceptance Criteria:**
+- Integrate with CLI
+- Full end-to-end test
+- Export results
+**Technical Notes:** Test with 5-min video
+**Dependencies:** GEMINI-001 to GEMINI-014
+**Time:** 3 hours
+
+---
+
+## Sprint 9: Chapter Processing (10 tickets)
+
+### CHAPTER-001: Create chapters.py Module
+**Acceptance Criteria:**
+- Create chapters module
+- Define chapter utilities
+- Import required libraries
+**Technical Notes:** Handle videos without chapters
+**Dependencies:** Phase 1 complete
+**Time:** 2 hours
+
+### CHAPTER-002: Extract Chapter Metadata
+**Acceptance Criteria:**
+- Parse chapters from yt-dlp metadata
+- Convert timestamps to seconds
+- Validate chapter data
+**Technical Notes:** Some videos have auto-chapters
+**Dependencies:** CHAPTER-001
+**Time:** 3 hours
+
+### CHAPTER-003: Implement Audio Slicing
+**Acceptance Criteria:**
+- Slice audio by chapter boundaries
+- Add configurable overlap (2s default)
+- Save chapter segments
+**Technical Notes:** Use ffmpeg -ss and -t
+**Dependencies:** CHAPTER-002
+**Time:** 3 hours
+
+### CHAPTER-004: Add Chapter Processing Loop
+**Acceptance Criteria:**
+- Process each chapter independently
+- Pass to transcription engine
+- Track chapter index
+**Technical Notes:** Maintain chapter order
+**Dependencies:** CHAPTER-003
+**Time:** 3 hours
+
+### CHAPTER-005: Implement Segment Offset Adjustment
+**Acceptance Criteria:**
+- Adjust timestamps to video time
+- Add chapter start offset
+- Maintain accuracy
+**Technical Notes:** Float precision important
+**Dependencies:** CHAPTER-004
+**Time:** 2 hours
+
+### CHAPTER-006: Create Chapter-Aware Stitching
+**Acceptance Criteria:**
+- Merge segments across chapters
+- Handle boundary overlaps
+- Preserve chapter markers
+**Technical Notes:** Sort by timestamp
+**Dependencies:** CHAPTER-005
+**Time:** 3 hours
+
+### CHAPTER-007: Add Chapter Metadata to Output
+**Acceptance Criteria:**
+- Include chapters in TranscriptDoc
+- Add chapter titles and times
+- Export in JSON
+**Technical Notes:** Optional field
+**Dependencies:** CHAPTER-006
+**Time:** 2 hours
+
+### CHAPTER-008: Implement Parallel Chapter Processing
+**Acceptance Criteria:**
+- Process chapters concurrently
+- Limit parallelism to CPU count
+- Maintain result order
+**Technical Notes:** Use ThreadPoolExecutor
+**Dependencies:** CHAPTER-004
+**Time:** 4 hours
+
+### CHAPTER-009: Add Chapter Progress Display
+**Acceptance Criteria:**
+- Show progress per chapter
+- Display chapter names
+- Update overall progress
+**Technical Notes:** Use rich progress bars
+**Dependencies:** CHAPTER-008
+**Time:** 3 hours
+
+### CHAPTER-010: Create Chapter Summary Option
+**Acceptance Criteria:**
+- Optional per-chapter summaries
+- Use Gemini for summarization
+- Add to chapter metadata
+**Technical Notes:** Only if --summarize
+**Dependencies:** CHAPTER-007
+**Time:** 3 hours
+
+---
+
+## Sprint 10: Summarization Features (8 tickets)
+
+### SUMMARY-001: Create Summary Module
+**Acceptance Criteria:**
+- Create summarizer.py
+- Define summary functions
+- Set up prompt templates
+**Technical Notes:** Use Gemini for summaries
+**Dependencies:** GEMINI-015
+**Time:** 2 hours
+
+### SUMMARY-002: Build Summary Prompt
+**Acceptance Criteria:**
+- Create effective summary prompt
+- Request TLDR and key points
+- Specify output format
+**Technical Notes:** Max 500 chars for TLDR
+**Dependencies:** SUMMARY-001
+**Time:** 3 hours
+
+### SUMMARY-003: Implement Transcript Summarization
+**Acceptance Criteria:**
+- Send transcript to Gemini
+- Parse summary response
+- Create Summary object
+**Technical Notes:** Handle long transcripts
+**Dependencies:** SUMMARY-002
+**Time:** 3 hours
+
+### SUMMARY-004: Add Bullet Point Extraction
+**Acceptance Criteria:**
+- Extract 3-5 key points
+- Format as bullet list
+- Ensure conciseness
+**Technical Notes:** Each bullet < 100 chars
+**Dependencies:** SUMMARY-003
+**Time:** 3 hours
+
+### SUMMARY-005: Implement Smart Truncation
+**Acceptance Criteria:**
+- Truncate long transcripts intelligently
+- Maintain context for summary
+- Use sliding window if needed
+**Technical Notes:** Max 30k tokens to Gemini
+**Dependencies:** SUMMARY-003
+**Time:** 3 hours
+
+### SUMMARY-006: Add Language-Aware Summaries
+**Acceptance Criteria:**
+- Detect transcript language
+- Summarize in same language
+- Handle multilingual content
+**Technical Notes:** Use detected language
+**Dependencies:** SUMMARY-003
+**Time:** 3 hours
+
+### SUMMARY-007: Create Summary Cache
+**Acceptance Criteria:**
+- Cache summaries separately
+- Avoid re-summarizing
+- Update if transcript changes
+**Technical Notes:** Include in config hash
+**Dependencies:** SUMMARY-003, CACHE-010
+**Time:** 2 hours
+
+### SUMMARY-008: Wire Up Summary Pipeline
+**Acceptance Criteria:**
+- Add --summarize flag to CLI
+- Integrate with transcription
+- Include in exports
+**Technical Notes:** Optional feature
+**Dependencies:** SUMMARY-001 to SUMMARY-007
+**Time:** 3 hours
+
+---
+
+## Sprint 11: Error Handling & Resilience (10 tickets)
+
+### ERROR-001: Create Error Types
+**Acceptance Criteria:**
+- Define custom exception classes
+- Include error codes
+- Add user-friendly messages
+**Technical Notes:** Inherit from Exception
+**Dependencies:** None
+**Time:** 2 hours
+
+### ERROR-002: Add Network Error Handling
+**Acceptance Criteria:**
+- Handle connection errors
+- Implement retry logic
+- Show clear messages
+**Technical Notes:** Use tenacity
+**Dependencies:** ERROR-001
+**Time:** 3 hours
+
+### ERROR-003: Implement File System Errors
+**Acceptance Criteria:**
+- Handle permission errors
+- Check disk space
+- Graceful degradation
+**Technical Notes:** Catch OSError
+**Dependencies:** ERROR-001
+**Time:** 3 hours
+
+### ERROR-004: Add API Error Handling
+**Acceptance Criteria:**
+- Handle Gemini API errors
+- Parse error responses
+- Suggest solutions
+**Technical Notes:** Check quota limits
+**Dependencies:** ERROR-001
+**Time:** 3 hours
+
+### ERROR-005: Create Recovery Strategies
+**Acceptance Criteria:**
+- Define fallback options
+- Implement partial recovery
+- Save progress on failure
+**Technical Notes:** Write partial results
+**Dependencies:** ERROR-001
+**Time:** 3 hours
+
+### ERROR-006: Add Input Validation
+**Acceptance Criteria:**
+- Validate all user inputs
+- Check file formats
+- Verify URL accessibility
+**Technical Notes:** Early validation
+**Dependencies:** ERROR-001
+**Time:** 2 hours
+
+### ERROR-007: Implement Timeout Handling
+**Acceptance Criteria:**
+- Add timeouts to all operations
+- Make configurable
+- Handle gracefully
+**Technical Notes:** Default 5 min timeout
+**Dependencies:** ERROR-001
+**Time:** 3 hours
+
+### ERROR-008: Create Error Reporting
+**Acceptance Criteria:**
+- Log errors with context
+- Create error report file
+- Sanitize sensitive data
+**Technical Notes:** Remove API keys
+**Dependencies:** ERROR-001
+**Time:** 3 hours
+
+### ERROR-009: Add Interrupt Handling
+**Acceptance Criteria:**
+- Handle Ctrl+C gracefully
+- Clean up temp files
+- Save progress if possible
+**Technical Notes:** Use signal handlers
+**Dependencies:** ERROR-005
+**Time:** 3 hours
+
+### ERROR-010: Implement Health Checks
+**Acceptance Criteria:**
+- Check ffmpeg availability
+- Verify API keys
+- Test network connectivity
+**Technical Notes:** Run before main operation
+**Dependencies:** ERROR-001
+**Time:** 2 hours
+
+---
+
+## Sprint 12: Testing & Documentation (12 tickets)
+
+### TEST-001: Setup Testing Framework
+**Acceptance Criteria:**
+- Configure pytest
+- Add to pyproject.toml
+- Create test structure
+**Technical Notes:** Use pytest-asyncio
+**Dependencies:** None
+**Time:** 2 hours
+
+### TEST-002: Create Test Fixtures
+**Acceptance Criteria:**
+- Sample audio files
+- Mock API responses
+- Test configurations
+**Technical Notes:** Use pytest fixtures
+**Dependencies:** TEST-001
+**Time:** 3 hours
+
+### TEST-003: Write Model Tests
+**Acceptance Criteria:**
+- Test all Pydantic models
+- Validation testing
+- Serialization tests
+**Technical Notes:** 100% model coverage
+**Dependencies:** TEST-002
+**Time:** 3 hours
+
+### TEST-004: Add Downloader Tests
+**Acceptance Criteria:**
+- Mock yt-dlp responses
+- Test error cases
+- Verify retries
+**Technical Notes:** Use unittest.mock
+**Dependencies:** TEST-002
+**Time:** 3 hours
+
+### TEST-005: Create Engine Tests
+**Acceptance Criteria:**
+- Test Whisper engine
+- Test Gemini engine
+- Mock API calls
+**Technical Notes:** Test edge cases
+**Dependencies:** TEST-002
+**Time:** 4 hours
+
+### TEST-006: Write Integration Tests
+**Acceptance Criteria:**
+- End-to-end test with short audio
+- Test all export formats
+- Verify cache behavior
+**Technical Notes:** Use real 10s clip
+**Dependencies:** TEST-005
+**Time:** 4 hours
+
+### TEST-007: Add CLI Tests
+**Acceptance Criteria:**
+- Test all commands
+- Verify parameter handling
+- Check error messages
+**Technical Notes:** Use typer.testing
+**Dependencies:** TEST-001
+**Time:** 3 hours
+
+### TEST-008: Create Performance Tests
+**Acceptance Criteria:**
+- Benchmark transcription speed
+- Memory usage monitoring
+- Cache performance
+**Technical Notes:** Use pytest-benchmark
+**Dependencies:** TEST-006
+**Time:** 3 hours
+
+### TEST-009: Write Comprehensive README
+**Acceptance Criteria:**
+- Installation instructions
+- Usage examples
+- Troubleshooting guide
+**Technical Notes:** Include screenshots
+**Dependencies:** None
+**Time:** 3 hours
+
+### TEST-010: Create API Documentation
+**Acceptance Criteria:**
+- Document all public APIs
+- Include code examples
+- Type hints complete
+**Technical Notes:** Use docstrings
+**Dependencies:** None
+**Time:** 3 hours
+
+### TEST-011: Add Configuration Guide
+**Acceptance Criteria:**
+- Document all env variables
+- Explain configuration options
+- Provide .env.example
+**Technical Notes:** Include defaults
+**Dependencies:** TEST-009
+**Time:** 2 hours
+
+### TEST-012: Create Release Checklist
+**Acceptance Criteria:**
+- Version bump process
+- Testing requirements
+- Release notes template
+**Technical Notes:** Include in README
+**Dependencies:** TEST-009
+**Time:** 2 hours
+
+---
+
+## Sprint 13: Polish & Optimization (8 tickets)
+
+### POLISH-001: Optimize Memory Usage
+**Acceptance Criteria:**
+- Profile memory consumption
+- Reduce peak usage
+- Stream large files
+**Technical Notes:** Use memory_profiler
+**Dependencies:** All features complete
+**Time:** 4 hours
+
+### POLISH-002: Improve Startup Time
+**Acceptance Criteria:**
+- Lazy load heavy imports
+- Optimize model loading
+- Cache precomputed data
+**Technical Notes:** Measure with time
+**Dependencies:** POLISH-001
+**Time:** 3 hours
+
+### POLISH-003: Add Colored Output
+**Acceptance Criteria:**
+- Use rich for all output
+- Consistent color scheme
+- Respect NO_COLOR env
+**Technical Notes:** Error=red, success=green
+**Dependencies:** None
+**Time:** 2 hours
+
+### POLISH-004: Enhance Progress Bars
+**Acceptance Criteria:**
+- Add ETA calculations
+- Show transfer speeds
+- Multiple progress bars
+**Technical Notes:** Use rich.progress
+**Dependencies:** POLISH-003
+**Time:** 3 hours
+
+### POLISH-005: Create Debug Mode
+**Acceptance Criteria:**
+- Add --debug flag
+- Verbose logging
+- Save debug info
+**Technical Notes:** Include timings
+**Dependencies:** None
+**Time:** 2 hours
+
+### POLISH-006: Add Telemetry (Optional)
+**Acceptance Criteria:**
+- Anonymous usage stats
+- Opt-in only
+- Error tracking
+**Technical Notes:** Respect privacy
+**Dependencies:** None
+**Time:** 3 hours
+
+### POLISH-007: Implement Update Check
+**Acceptance Criteria:**
+- Check for new versions
+- Show update message
+- Provide update command
+**Technical Notes:** Check GitHub releases
+**Dependencies:** None
+**Time:** 3 hours
+
+### POLISH-008: Final Integration Test
+**Acceptance Criteria:**
+- Test all features together
+- Process 30-min video
+- Verify all outputs
+**Technical Notes:** Full system test
+**Dependencies:** All previous
+**Time:** 4 hours
+
+---
+
+## Deliverables Checklist
+
+### End of Phase 2 Capabilities:
+- [ ] Complete caching system with persistence
+- [ ] Gemini engine fully integrated
+- [ ] Chapter-aware processing
+- [ ] Automatic summarization
+- [ ] Comprehensive error handling
+- [ ] Full test coverage (>80%)
+- [ ] Production-ready documentation
+- [ ] Performance optimizations
+
+### Success Criteria:
+- Process videos up to 2 hours
+- Support both Whisper and Gemini engines
+- Intelligent caching reduces repeat processing
+- Chapter support for structured videos
+- Clear summaries in multiple languages
+- Graceful handling of all error cases
+- Comprehensive test suite passes
+- Documentation suitable for open source release
+
+### Performance Targets:
+- Whisper: < 6x realtime on Apple Silicon
+- Gemini: < 2 minutes for 30-min video
+- Cache lookup: < 100ms
+- Startup time: < 1 second
+- Memory usage: < 2GB for 1-hour video
+
+---
+
+## Phase 2 Timeline
+
+- **Week 1**: Caching System (10 tickets)
+- **Week 2-3**: Gemini Engine (15 tickets)
+- **Week 3**: Chapter Processing (10 tickets)
+- **Week 4**: Summarization & Error Handling (18 tickets)
+- **Week 5**: Testing, Documentation & Polish (20 tickets)
+- **Buffer**: 1 week for integration and refinement
+
+Total: 6 weeks for full Phase 2 completion with single developer
+With 2 developers: ~3 weeks
+With team of 4: ~2 weeks
+
+---
+
+## Risk Mitigation
+
+### Technical Risks:
+1. **Gemini API changes**: Abstract behind interface, version lock
+2. **Rate limits**: Implement robust retry logic, batch mode
+3. **Large file handling**: Streaming processing, chunking
+4. **Memory constraints**: Profile and optimize, use generators
+
+### Schedule Risks:
+1. **Integration complexity**: Regular integration points
+2. **Testing time**: Automate early, test continuously
+3. **Documentation debt**: Document as you code
+4. **Performance issues**: Profile early and often
+
+---
+
+## Definition of Done
+
+Each ticket is complete when:
+1. Code is written and working
+2. Unit tests are passing
+3. Integration verified
+4. Documentation updated
+5. Code reviewed (if team)
+6. Merged to main branch
+
+Phase 2 is complete when:
+1. All tickets completed
+2. Full test suite passing
+3. Documentation complete
+4. Performance targets met
+5. Ready for v1.0 release
