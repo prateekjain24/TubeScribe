@@ -465,6 +465,10 @@ Verification:
 **Dependencies:** SETUP-003
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/exporters/__init__.py` with abstract `Exporter` base class and a minimal registry (`register_exporter`, `get_exporter`, `available_exporters`).
+
 ### EXPORT-002: Create Base Exporter Class
 **Acceptance Criteria:**
 - Abstract base class with export() method
