@@ -666,6 +666,10 @@ Verification:
 **Dependencies:** CLI-006
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- `transcribe` now accepts `--engine`, `--model`, and `--output-dir` with descriptive help.
+
 ### CLI-008: Implement Parameter Validation
 **Acceptance Criteria:**
 - Validate engine choices (whisper only for now)
@@ -674,6 +678,12 @@ Verification:
 **Technical Notes:** Raise typer.BadParameter
 **Dependencies:** CLI-007
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Validates URL via `extract_video_id()`; raises `BadParameter` on failure.
+- Enforces engine in {whisper}; raises `BadParameter` otherwise.
+- Requires `--output-dir` to exist when provided; raises `BadParameter` if missing.
 
 ### CLI-009: Add Progress Display
 **Acceptance Criteria:**

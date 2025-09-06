@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 
 import typer
 from rich.console import Console
 from .logging import configure_logging
+from .downloader import extract_video_id
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -56,10 +58,34 @@ def hello(name: str = "world") -> None:
 
 
 @app.command()
-def transcribe(url: str = typer.Argument(..., help="YouTube URL to transcribe")) -> None:
+def transcribe(
+    url: str = typer.Argument(..., help="YouTube URL to transcribe"),
+    engine: str = typer.Option("whisper", "--engine", help="Transcription engine (whisper)"),
+    model: str = typer.Option("small", "--model", help="Model name for the selected engine"),
+    output_dir: Path | None = typer.Option(
+        None,
+        "--output-dir",
+        dir_okay=True,
+        file_okay=False,
+        writable=True,
+        help="Directory to write outputs (must exist)",
+    ),
+) -> None:
     """Transcribe a YouTube video (stub)."""
+    # CLI-008: Parameter validation
+    vid = extract_video_id(url)
+    if not vid:
+        raise typer.BadParameter("Invalid YouTube URL or video ID", param_hint=["url"])
+    allowed_engines = {"whisper"}
+    if engine not in allowed_engines:
+        raise typer.BadParameter("Unsupported engine (supported: whisper)", param_hint=["engine"])
+    if output_dir is not None and not output_dir.exists():
+        raise typer.BadParameter("Output directory does not exist", param_hint=["output-dir"])
+
     # Stub implementation for CLI-006; wiring happens in later tickets.
-    console.print(f"[bold]Transcribe[/]: {url}")
+    console.print(f"[bold]Transcribe[/]: id={vid} engine={engine} model={model}")
+    if output_dir:
+        console.print(f"Output dir: {output_dir}")
 
 
 if __name__ == "__main__":
