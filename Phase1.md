@@ -405,6 +405,11 @@ Verification:
 **Dependencies:** DOWNLOAD-004
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- `download_audio()` now skips when `<id>.<fmt>` exists and is non-empty unless `overwrite=True`.
+- Added `_is_nonempty_file(path)` helper to verify size > 0.
+
 ### DOWNLOAD-010: Add Retry Logic
 **Acceptance Criteria:**
 - Wrap download in tenacity retry
@@ -413,6 +418,11 @@ Verification:
 **Technical Notes:** Use @retry decorator
 **Dependencies:** DOWNLOAD-004
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Added retry around the download attempt using Tenacity (`stop_after_attempt(3)`, `wait_random_exponential(max=8)`).
+- Retries on `YTDLPError`; returns on first successful, non-empty file.
 
 ### DOWNLOAD-011: Handle Restricted Content
 **Acceptance Criteria:**

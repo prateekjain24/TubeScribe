@@ -15,6 +15,7 @@ from rich.logging import RichHandler
 
 from .models import VideoMetadata
 from .audio import ensure_ffmpeg
+from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
 
 # Configure module logger with Rich handler (idempotent)
@@ -234,10 +235,58 @@ def download_audio(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     expected = out_dir / f"{meta.id}.{audio_format}"
-    if expected.exists() and not overwrite:
-        logger.info("Audio exists, skipping download: %s", expected)
+    if expected.exists() and not overwrite and _is_nonempty_file(expected):
+        logger.info("Audio exists and is non-empty, skipping: %s", expected)
         return expected
 
+    # Retry wrapper: attempt up to 3 times on YTDLPError with exponential backoff (jitter)
+    for attempt in Retrying(
+        stop=stop_after_attempt(3),
+        wait=wait_random_exponential(multiplier=1, max=8),
+        retry=retry_if_exception_type(YTDLPError),
+        reraise=True,
+    ):
+        with attempt:
+            path = _download_audio_once(
+                meta,
+                out_dir,
+                expected,
+                timeout=timeout,
+                audio_format=audio_format,
+                audio_quality=audio_quality,
+                overwrite=overwrite,
+                cookies_from_browser=cookies_from_browser,
+                cookies_file=cookies_file,
+                use_api=use_api,
+            )
+            if not _is_nonempty_file(path):
+                raise YTDLPError(f"download produced empty file: {path}")
+            return path
+
+    # Should not reach here because reraise=True will raise on final failure
+    raise YTDLPError("download failed after retries")
+
+
+def _is_nonempty_file(path: Path) -> bool:
+    try:
+        return path.is_file() and path.stat().st_size > 0
+    except FileNotFoundError:
+        return False
+
+
+def _download_audio_once(
+    meta: VideoMetadata,
+    out_dir: Path,
+    expected: Path,
+    *,
+    timeout: int,
+    audio_format: str,
+    audio_quality: str,
+    overwrite: bool,
+    cookies_from_browser: str | None,
+    cookies_file: str | None,
+    use_api: bool,
+) -> Path:
     if use_api:
         try:
             return _download_audio_api(
@@ -291,15 +340,13 @@ def download_audio(
         stderr_tail = (proc.stderr or "").strip().splitlines()[-10:]
         raise YTDLPError("yt-dlp download failed: %s" % (" | ".join(stderr_tail)))
 
-    # Validate expected output exists
-    if not expected.exists():
-        # Attempt to find the file by id with any extension (rare mismatch)
-        for p in out_dir.glob(f"{meta.id}.*"):
-            if p.is_file():
-                return p
-        raise YTDLPError(f"expected audio file not found: {expected}")
-
-    return expected
+    # Validate expected output exists or guess by id
+    if expected.exists():
+        return expected
+    for p in out_dir.glob(f"{meta.id}.*"):
+        if p.is_file():
+            return p
+    raise YTDLPError(f"expected audio file not found: {expected}")
 
 
 def _download_audio_api(
