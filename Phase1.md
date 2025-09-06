@@ -349,6 +349,11 @@ Verification:
 **Dependencies:** DOWNLOAD-004
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Enhanced `download_audio()` to use yt-dlp's Python API with a Rich progress bar (bytes, speed, ETA). Falls back to subprocess on errors.
+- Progress updates via `progress_hooks` reflecting `downloaded_bytes` and `total_bytes(_estimate)`.
+
 ### DOWNLOAD-006: Create audio.py Module
 **Acceptance Criteria:**
 - Create audio.py file
@@ -357,6 +362,11 @@ Verification:
 **Technical Notes:** Check ffmpeg availability
 **Dependencies:** SETUP-003
 **Time:** 2 hours
+
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/audio.py` with `ensure_ffmpeg()`, `normalize_wav()`, and command builder.
+- Integrated downloader to use `ensure_ffmpeg()` from audio module.
 
 ### DOWNLOAD-007: Implement WAV Normalization
 **Acceptance Criteria:**

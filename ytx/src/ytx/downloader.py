@@ -14,6 +14,7 @@ from typing import Final, Any
 from rich.logging import RichHandler
 
 from .models import VideoMetadata
+from .audio import ensure_ffmpeg
 
 
 # Configure module logger with Rich handler (idempotent)
@@ -206,17 +207,6 @@ def fetch_metadata(
     return vm
 
 
-class FFmpegNotFound(RuntimeError):
-    pass
-
-
-def _ensure_ffmpeg() -> None:
-    import shutil
-
-    if not shutil.which("ffmpeg"):
-        raise FFmpegNotFound("ffmpeg is required for audio extraction; please install it")
-
-
 def download_audio(
     meta: VideoMetadata,
     out_dir: Path,
@@ -227,6 +217,7 @@ def download_audio(
     timeout: int = 60 * 30,
     cookies_from_browser: str | None = None,
     cookies_file: str | None = None,
+    use_api: bool = True,
 ) -> Path:
     """Download best audio and extract to requested format.
 
@@ -237,7 +228,7 @@ def download_audio(
 
     if not shutil.which("yt-dlp"):
         raise YTDLPError("yt-dlp is not installed or not on PATH")
-    _ensure_ffmpeg()
+    ensure_ffmpeg()
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -247,7 +238,21 @@ def download_audio(
         logger.info("Audio exists, skipping download: %s", expected)
         return expected
 
-    # Use yt-dlp to extract bestaudio and convert to target format via ffmpeg
+    if use_api:
+        try:
+            return _download_audio_api(
+                meta,
+                out_dir,
+                audio_format=audio_format,
+                audio_quality=audio_quality,
+                overwrite=overwrite,
+                cookies_from_browser=cookies_from_browser,
+                cookies_file=cookies_file,
+            )
+        except Exception as e:  # fallback to subprocess for resilience
+            logger.warning("yt-dlp API failed (%s); falling back to subprocess", e)
+
+    # Fallback: Use yt-dlp CLI to extract bestaudio and convert to target format via ffmpeg
     cmd = [
         "yt-dlp",
         "--no-playlist",
@@ -287,6 +292,97 @@ def download_audio(
         raise YTDLPError("yt-dlp download failed: %s" % (" | ".join(stderr_tail)))
 
     # Validate expected output exists
+    if not expected.exists():
+        # Attempt to find the file by id with any extension (rare mismatch)
+        for p in out_dir.glob(f"{meta.id}.*"):
+            if p.is_file():
+                return p
+        raise YTDLPError(f"expected audio file not found: {expected}")
+
+    return expected
+
+
+def _download_audio_api(
+    meta: VideoMetadata,
+    out_dir: Path,
+    *,
+    audio_format: str,
+    audio_quality: str,
+    overwrite: bool,
+    cookies_from_browser: str | None,
+    cookies_file: str | None,
+) -> Path:
+    """Download audio using yt-dlp's Python API with a Rich progress bar."""
+    from rich.progress import Progress, BarColumn, TimeRemainingColumn, DownloadColumn, TransferSpeedColumn, TextColumn
+
+    # Defer import to runtime to keep module load light
+    try:
+        from yt_dlp import YoutubeDL  # type: ignore
+    except Exception as e:  # pragma: no cover
+        raise YTDLPError(f"yt-dlp import failed: {e}")
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    expected = out_dir / f"{meta.id}.{audio_format}"
+    if expected.exists() and not overwrite:
+        logger.info("Audio exists, skipping download: %s", expected)
+        return expected
+
+    task_id: int | None = None
+    total: int | None = None
+
+    def hook(d: dict[str, Any]) -> None:
+        nonlocal task_id, total
+        status = d.get("status")
+        if status == "downloading":
+            downloaded = int(d.get("downloaded_bytes") or 0)
+            total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
+            if total_bytes and total_bytes != total:
+                total = int(total_bytes)
+                if task_id is not None:
+                    progress.update(task_id, total=total)
+            if task_id is None:
+                task_id = progress.add_task(f"Downloading {meta.id}", total=total or 0)
+            progress.update(task_id, completed=downloaded)
+        elif status == "finished":
+            if task_id is not None:
+                progress.update(task_id, completed=total or progress.tasks[task_id].completed)
+
+    ydl_opts: dict[str, Any] = {
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "continuedl": True,
+        "nopart": True,
+        "no_mtime": True,
+        "overwrites": bool(overwrite),
+        "format": "bestaudio/best",
+        "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
+        "progress_hooks": [hook],
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": audio_format,
+                "preferredquality": audio_quality,
+            }
+        ],
+    }
+    if cookies_from_browser:
+        ydl_opts["cookiesfrombrowser"] = cookies_from_browser
+    if cookies_file:
+        ydl_opts["cookiefile"] = cookies_file
+
+    logger.info("Downloading audio for %s → %s", meta.id, expected.name)
+    with Progress(
+        TextColumn("{task.description}"),
+        BarColumn(),
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(),
+    ) as progress:
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([meta.url])
+
     if not expected.exists():
         # Attempt to find the file by id with any extension (rare mismatch)
         for p in out_dir.glob(f"{meta.id}.*"):
