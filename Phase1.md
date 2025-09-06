@@ -242,6 +242,11 @@ Verification:
 **Dependencies:** MODEL-006
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `load_config()` in `ytx/src/ytx/config.py` which calls `load_dotenv(override=False)` then builds `AppConfig`.
+- `AppConfig` also honors `.env` via `SettingsConfigDict(env_file=(".env",))`; env vars override file values.
+
 ### MODEL-009: Create Video Metadata Model
 **Acceptance Criteria:**
 - Add VideoMetadata with id, title, duration, url
@@ -251,6 +256,12 @@ Verification:
 **Dependencies:** MODEL-001
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Implemented `VideoMetadata` in `ytx/src/ytx/models.py` with coercion for `duration`:
+  - Supports floats/ints, `HH:MM:SS`/`MM:SS`, and ISO8601 like `PT1H2M3S`.
+- Quick `uv run` sanity validated parsing to seconds.
+
 ### MODEL-010: Add Model Serialization Methods
 **Acceptance Criteria:**
 - Add .model_dump_json() usage examples
@@ -259,6 +270,11 @@ Verification:
 **Technical Notes:** Use sort_keys=True
 **Dependencies:** MODEL-005
 **Time:** 2 hours
+
+Status: Completed
+Verification:
+- `ModelBase` uses orjson for JSON serialization; updated to sort keys (`OPT_SORT_KEYS`) for deterministic output.
+- All models inherit `ModelBase`, so `.model_dump_json()` yields stable ordering.
 
 ---
 

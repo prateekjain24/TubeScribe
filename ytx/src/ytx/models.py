@@ -14,7 +14,7 @@ try:  # Prefer orjson for fast, stable JSON
     import orjson as _orjson
 
     def _orjson_dumps(v, *, default):  # type: ignore[no-redef]
-        return _orjson.dumps(v, default=default).decode()
+        return _orjson.dumps(v, default=default, option=_orjson.OPT_SORT_KEYS).decode()
 
 except Exception:  # pragma: no cover - fallback to stdlib
     import json as _json
@@ -138,3 +138,69 @@ class TranscriptDoc(ModelBase):
 
 
 __all__.append("TranscriptDoc")
+
+
+# Video metadata
+import re
+from pydantic import field_validator
+
+
+def _parse_iso8601_duration(s: str) -> float:
+    """Parse subset of ISO8601 durations like PT1H2M3S → seconds.
+
+    Supports P, PT, with H/M/S components. Ignores days/months/years.
+    """
+    pattern = re.compile(r"PT(?:(?P<h>\d+)H)?(?:(?P<m>\d+)M)?(?:(?P<s>\d+)S)?")
+    m = pattern.fullmatch(s)
+    if not m:
+        raise ValueError("Invalid ISO8601 duration")
+    hours = int(m.group("h") or 0)
+    minutes = int(m.group("m") or 0)
+    seconds = int(m.group("s") or 0)
+    return float(hours * 3600 + minutes * 60 + seconds)
+
+
+def _parse_hhmmss(s: str) -> float:
+    parts = s.split(":")
+    if not all(p.isdigit() for p in parts):
+        raise ValueError("Invalid time string")
+    parts = [int(p) for p in parts]
+    if len(parts) == 3:
+        h, m, sec = parts
+    elif len(parts) == 2:
+        h, m, sec = 0, parts[0], parts[1]
+    elif len(parts) == 1:
+        h, m, sec = 0, 0, parts[0]
+    else:
+        raise ValueError("Invalid time components")
+    return float(h * 3600 + m * 60 + sec)
+
+
+class VideoMetadata(ModelBase):
+    """Metadata about the source video/audio used for transcription."""
+
+    id: NonEmptyStr
+    title: str | None = None
+    duration: Seconds | None = None
+    url: NonEmptyStr
+    uploader: str | None = None
+    description: str | None = None
+
+    @field_validator("duration", mode="before")
+    @classmethod
+    def _coerce_duration(cls, v):  # type: ignore[override]
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            txt = v.strip().upper()
+            # ISO8601 like PT1H2M3S
+            if txt.startswith("PT"):
+                return _parse_iso8601_duration(txt)
+            # HH:MM:SS or MM:SS
+            return _parse_hhmmss(txt)
+        raise TypeError("Unsupported duration type")
+
+
+__all__.append("VideoMetadata")

@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
 from hashlib import sha256
 
 try:
@@ -41,7 +42,7 @@ class AppConfig(BaseSettings):
     # Later we can add cache/output dirs, concurrency, and API keys.
 
     # For now, only pick up variables starting with YTX_.
-    model_config = SettingsConfigDict(env_prefix="YTX_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="YTX_", extra="ignore", env_file=(".env",), env_file_encoding="utf-8")
 
     # --- Hashing ---
     def _hash_input(self) -> dict[str, Any]:
@@ -62,6 +63,16 @@ class AppConfig(BaseSettings):
         """Stable SHA256 hash for cache keying and artifact directories."""
         payload = _dumps(self._hash_input()).encode("utf-8")
         return sha256(payload).hexdigest()
+
+
+def load_config(**overrides: Any) -> AppConfig:
+    """Load environment from .env (non-overriding) and return AppConfig.
+
+    python-dotenv is used with override=False so real env vars take precedence.
+    Explicit keyword overrides win over both.
+    """
+    load_dotenv(override=False)
+    return AppConfig(**overrides)
 
 
 __all__ = [
