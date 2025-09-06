@@ -303,6 +303,12 @@ Verification:
 **Dependencies:** MODEL-009, DOWNLOAD-001
 **Time:** 4 hours
 
+Status: Completed
+Verification:
+- Implemented `fetch_metadata(url, timeout=90, cookies_from_browser=None, cookies_file=None)` in `ytx/src/ytx/downloader.py`.
+- Uses `subprocess.run` with `--no-playlist --dump-json --no-download`; parses JSON and returns `VideoMetadata`.
+- Error handling for missing yt-dlp, timeout, non-zero exit, and malformed JSON; logs an info line on success.
+
 ### DOWNLOAD-003: Add URL Validation
 **Acceptance Criteria:**
 - Validate YouTube URL format
