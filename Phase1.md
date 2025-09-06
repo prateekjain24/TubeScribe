@@ -694,6 +694,10 @@ Verification:
 **Dependencies:** CLI-004
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- `transcribe` uses `console.status()` with spinners for stages (fetch metadata, download audio). Placeholders now; wired to real steps later.
+
 ### CLI-010: Create Cache Command Stubs
 **Acceptance Criteria:**
 - Add cache command group
@@ -702,6 +706,10 @@ Verification:
 **Technical Notes:** Use @app.command(name="cache")
 **Dependencies:** CLI-001
 **Time:** 2 hours
+
+Status: Completed
+Verification:
+- Added `cache` group with `ls` and `clear` (requires `--yes`), both printing placeholder messages.
 
 ---
 

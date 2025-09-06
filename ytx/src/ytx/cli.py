@@ -82,10 +82,38 @@ def transcribe(
     if output_dir is not None and not output_dir.exists():
         raise typer.BadParameter("Output directory does not exist", param_hint=["output-dir"])
 
-    # Stub implementation for CLI-006; wiring happens in later tickets.
+    # CLI-009: Progress display using rich.status
+    with console.status("[bold blue]Fetching metadata…", spinner="dots"):
+        # Placeholder: real implementation will invoke downloader.fetch_metadata
+        pass
+    with console.status("[bold green]Downloading audio…", spinner="dots"):
+        # Placeholder: real implementation will invoke download_audio
+        pass
     console.print(f"[bold]Transcribe[/]: id={vid} engine={engine} model={model}")
     if output_dir:
         console.print(f"Output dir: {output_dir}")
+
+
+# CLI-010: Cache command group (stubs)
+cache_app = typer.Typer(help="Manage local cache (stubs)")
+
+
+@cache_app.command("ls")
+def cache_ls() -> None:
+    """List cached artifacts (stub)."""
+    console.print("[dim]Cache listing not implemented yet.[/]")
+
+
+@cache_app.command("clear")
+def cache_clear(confirm: bool = typer.Option(False, "--yes", help="Confirm deletion")) -> None:
+    """Clear cached artifacts (stub)."""
+    if not confirm:
+        console.print("[yellow]Refusing to clear cache without --yes[/]")
+        raise typer.Exit(code=1)
+    console.print("[dim]Cache clear not implemented yet.[/]")
+
+
+app.add_typer(cache_app, name="cache")
 
 
 if __name__ == "__main__":
