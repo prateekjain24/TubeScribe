@@ -177,8 +177,8 @@ def fetch_metadata(
         raise YTDLPError(f"yt-dlp timed out after {timeout}s") from e
 
     if proc.returncode != 0:
-        stderr_tail = (proc.stderr or "").strip().splitlines()[-5:]
-        msg = "yt-dlp failed (code %s): %s" % (proc.returncode, " | ".join(stderr_tail))
+        stderr = (proc.stderr or "").strip()
+        msg = _friendly_yt_dlp_error(stderr, url)
         raise YTDLPError(msg)
 
     stdout = (proc.stdout or "").strip()
@@ -337,8 +337,8 @@ def _download_audio_once(
         raise YTDLPError(f"yt-dlp download timed out after {timeout}s") from e
 
     if proc.returncode != 0:
-        stderr_tail = (proc.stderr or "").strip().splitlines()[-10:]
-        raise YTDLPError("yt-dlp download failed: %s" % (" | ".join(stderr_tail)))
+        stderr = (proc.stderr or "").strip()
+        raise YTDLPError(_friendly_yt_dlp_error(stderr, meta.url))
 
     # Validate expected output exists or guess by id
     if expected.exists():
@@ -347,6 +347,35 @@ def _download_audio_once(
         if p.is_file():
             return p
     raise YTDLPError(f"expected audio file not found: {expected}")
+
+
+def _friendly_yt_dlp_error(stderr: str, url: str) -> str:
+    """Return a concise, actionable error message for common yt-dlp failures."""
+    s = stderr.lower()
+    hint = None
+
+    def suggest_cookies() -> str:
+        return (
+            "Restricted content detected. Try cookies: "
+            "cookies_from_browser='chrome' or cookies_file='cookies.txt'"
+        )
+
+    if any(x in s for x in ["age-restricted", "confirm your age", "sign in to confirm"]):
+        hint = suggest_cookies()
+    elif "not available in your country" in s or "blocked in your country" in s:
+        hint = suggest_cookies() + "; region restrictions may apply"
+    elif "private video" in s or "this video is private" in s:
+        hint = "Video is private; access requires appropriate account permissions"
+    elif "members-only" in s or "premium" in s:
+        hint = "Members-only or Premium content; requires an authorized account"
+    elif "live" in s and ("ended" in s or "finished" in s):
+        hint = "Live event ended; VOD may not be available yet"
+
+    base = "yt-dlp failed"
+    tail = " | ".join(stderr.strip().splitlines()[-5:]) if stderr.strip() else ""
+    if hint:
+        return f"{base}: {tail} | {hint}"
+    return f"{base}: {tail}"
 
 
 def _download_audio_api(

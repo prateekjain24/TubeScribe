@@ -433,6 +433,11 @@ Verification:
 **Dependencies:** DOWNLOAD-002
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Added `_friendly_yt_dlp_error(stderr, url)` in `ytx/src/ytx/downloader.py` to classify common failures (age restricted, region locked, private, members-only) and suggest cookie usage.
+- Integrated in both `fetch_metadata()` and subprocess fallback in `download_audio()`.
+
 ### DOWNLOAD-012: Add Cookie Support
 **Acceptance Criteria:**
 - Accept cookies file path
@@ -441,6 +446,11 @@ Verification:
 **Technical Notes:** Use --cookies parameter
 **Dependencies:** DOWNLOAD-004
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- `fetch_metadata()` and `download_audio()` accept `cookies_from_browser` and `cookies_file` and forward them to yt-dlp (API and CLI).
+- `ytx/README.md` includes a section on restricted videos & cookie usage (browser-derived and Netscape file format) with examples.
 
 ---
 
