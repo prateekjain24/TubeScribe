@@ -50,14 +50,16 @@ class SRTExporter(FileExporter):
         path = self.target_path(doc, out_dir)
         subs: list[srt.Subtitle] = []
         prev_end = 0.0
-        for i, seg in enumerate(doc.segments, start=1):
+        for seg in doc.segments:
             start = max(seg.start, prev_end)
             end = max(seg.end, start + 0.001)
             prev_end = end
             content = wrap_caption(seg.text, line_width=self.line_width, max_lines=self.max_lines)
+            if not content.strip():
+                continue  # skip empty captions
             subs.append(
                 srt.Subtitle(
-                    index=i,
+                    index=len(subs) + 1,
                     start=timedelta(seconds=start),
                     end=timedelta(seconds=end),
                     content=content,
@@ -69,4 +71,3 @@ class SRTExporter(FileExporter):
 
 
 __all__ = ["SRTExporter", "wrap_caption"]
-

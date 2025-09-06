@@ -552,6 +552,10 @@ Verification:
 **Dependencies:** EXPORT-005
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- `SRTExporter` skips empty/whitespace captions and assigns indices sequentially (`len(subs) + 1`) ensuring no gaps.
+
 ### EXPORT-008: Create Export Manager
 **Acceptance Criteria:**
 - Function to export all formats
@@ -560,6 +564,12 @@ Verification:
 **Technical Notes:** Return list of created files
 **Dependencies:** EXPORT-003, EXPORT-005
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/exporters/manager.py` with `parse_formats()` and `export_all()`.
+- Lazy-loads built-in exporters to populate the registry; filters unknown names and preserves order without duplicates.
+- Smoke test exports JSON and SRT for a sample document.
 
 ---
 
