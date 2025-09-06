@@ -145,6 +145,11 @@ Verification:
 **Dependencies:** SETUP-004
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/models.py` with a strict `ModelBase` (Pydantic v2 `ConfigDict`).
+- Included orjson-backed JSON serialization and common type aliases: `Seconds`, `NonEmptyStr`.
+
 ### MODEL-002: Define TranscriptSegment Model
 **Acceptance Criteria:**
 - Create TranscriptSegment with id, start, end, text, confidence
