@@ -55,6 +55,13 @@ def hello(name: str = "world") -> None:
     console.print(f"Hello, {name}!")
 
 
+@app.command()
+def transcribe(url: str = typer.Argument(..., help="YouTube URL to transcribe")) -> None:
+    """Transcribe a YouTube video (stub)."""
+    # Stub implementation for CLI-006; wiring happens in later tickets.
+    console.print(f"[bold]Transcribe[/]: {url}")
+
+
 if __name__ == "__main__":
     try:
         app()

@@ -639,6 +639,11 @@ Verification:
 **Dependencies:** CLI-004
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Global `--verbose` flag on the app callback configures logging to DEBUG via `configure_logging()`; default is INFO.
+- Use `ytx --verbose <command>` to enable verbose output for any subcommand.
+
 ### CLI-006: Create Transcribe Command Stub
 **Acceptance Criteria:**
 - Add @app.command() for transcribe
@@ -647,6 +652,10 @@ Verification:
 **Technical Notes:** Type hints for parameters
 **Dependencies:** CLI-001
 **Time:** 2 hours
+
+Status: Completed
+Verification:
+- Added `transcribe` command accepting a `url: str` argument and printing a placeholder message. Execution verified via `uv run ytx transcribe <url>`.
 
 ### CLI-007: Add Basic Parameters
 **Acceptance Criteria:**
