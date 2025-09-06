@@ -724,6 +724,11 @@ Verification:
 **Dependencies:** SETUP-003
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/engines/` with `__init__.py` (engine registry) and `base.py`.
+- Registry provides `register_engine`, `available_engines`, and `create_engine` utilities.
+
 ### WHISPER-002: Define Engine Interface
 **Acceptance Criteria:**
 - Abstract base class TranscriptionEngine
@@ -732,6 +737,11 @@ Verification:
 **Technical Notes:** Use typing.Protocol
 **Dependencies:** WHISPER-001, MODEL-002
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Defined `TranscriptionEngine` as a `Protocol` in `engines/base.py` with `transcribe(audio_path: Path, *, config: AppConfig) -> list[TranscriptSegment]` and optional `detect_language()`.
+- Added `EngineError` for engine-specific failures.
 
 ### WHISPER-003: Create Whisper Engine Module
 **Acceptance Criteria:**
