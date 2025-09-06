@@ -598,6 +598,10 @@ Verification:
 **Dependencies:** CLI-001
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- `ytx/src/ytx/cli.py` has a `__main__` guard that runs `app()` and catches `KeyboardInterrupt`, exiting with code 130 and printing a friendly message.
+
 ### CLI-003: Add Version Command
 **Acceptance Criteria:**
 - Add --version flag

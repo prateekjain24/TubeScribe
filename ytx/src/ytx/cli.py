@@ -43,4 +43,8 @@ def hello(name: str = "world") -> None:
 
 
 if __name__ == "__main__":
-    app()
+    try:
+        app()
+    except KeyboardInterrupt:
+        console.print("[yellow]Aborted by user[/]")
+        raise SystemExit(130)
