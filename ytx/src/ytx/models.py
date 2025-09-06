@@ -81,3 +81,25 @@ class TranscriptSegment(ModelBase):
 
 
 __all__.append("TranscriptSegment")
+
+
+class Chapter(ModelBase):
+    """A logical chapter boundary within the source audio/video."""
+
+    title: NonEmptyStr | None = None
+    start: Seconds
+    end: Seconds
+    summary: str | None = None
+
+    @model_validator(mode="after")
+    def _validate_times(self) -> "Chapter":
+        if self.end <= self.start:
+            raise ValueError("end must be greater than start")
+        return self
+
+    @property
+    def duration(self) -> float:
+        return float(self.end - self.start)
+
+
+__all__.append("Chapter")

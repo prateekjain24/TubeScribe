@@ -173,6 +173,11 @@ Verification:
 **Dependencies:** MODEL-001
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Implemented `Chapter` in `ytx/src/ytx/models.py` with fields: `title` (optional), `start`, `end`, `summary` (optional).
+- Validator enforces `end > start`; added `duration` convenience property.
+
 ### MODEL-004: Define Summary Model
 **Acceptance Criteria:**
 - Create Summary with tldr and bullets fields
