@@ -508,6 +508,12 @@ Verification:
 **Dependencies:** EXPORT-003
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- `JSONExporter` now accepts `indent: int | None`.
+- `indent is None`: uses compact orjson-backed `model_dump_json()` with sorted keys.
+- `indent >= 2`: tries orjson `OPT_INDENT_2` with `OPT_SORT_KEYS`; falls back to stdlib `json.dumps(..., indent=indent, sort_keys=True, default=str)` for other indents.
+
 ### EXPORT-005: Implement SRT Exporter
 **Acceptance Criteria:**
 - Create srt_exporter.py
