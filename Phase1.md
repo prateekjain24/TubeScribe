@@ -187,6 +187,10 @@ Verification:
 **Dependencies:** MODEL-001
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `Summary` to `ytx/src/ytx/models.py` with `tldr` (max_length=500) and `bullets: list[str]` using `NonEmptyStr`.
+
 ### MODEL-005: Define TranscriptDoc Model
 **Acceptance Criteria:**
 - Create main document model with metadata
@@ -196,6 +200,10 @@ Verification:
 **Dependencies:** MODEL-002, MODEL-003, MODEL-004
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Implemented `TranscriptDoc` in `ytx/src/ytx/models.py` with metadata fields (`video_id`, `source_url`, `title`, `duration`, `language`, `engine`, `model`), `created_at` defaulting to `datetime.utcnow()`, and content (`segments`, optional `chapters`, optional `summary`).
+
 ### MODEL-006: Create Config Model
 **Acceptance Criteria:**
 - Create config.py with Config class
@@ -204,6 +212,11 @@ Verification:
 **Technical Notes:** Use Pydantic BaseSettings
 **Dependencies:** MODEL-001
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/config.py` with `AppConfig` (`engine`, `model`, `language`, `device`, `compute_type`) based on Pydantic `BaseSettings`.
+- Defaults set (engine=whisper, model=small, device=cpu, compute_type=int8); env prefix `YTX_` reserved for later expansion.
 
 ### MODEL-007: Implement Config Hash
 **Acceptance Criteria:**

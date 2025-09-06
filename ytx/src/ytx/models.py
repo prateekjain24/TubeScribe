@@ -103,3 +103,38 @@ class Chapter(ModelBase):
 
 
 __all__.append("Chapter")
+
+
+class Summary(ModelBase):
+    """Abstractive summary of a transcript or chapter."""
+
+    tldr: NonEmptyStr = Field(max_length=500)
+    bullets: list[NonEmptyStr] = Field(default_factory=list)
+
+
+__all__.append("Summary")
+
+
+from datetime import datetime
+
+
+class TranscriptDoc(ModelBase):
+    """Top-level transcript document with metadata and segments."""
+
+    # Metadata
+    video_id: NonEmptyStr
+    source_url: NonEmptyStr
+    title: str | None = None
+    duration: Seconds | None = None
+    language: str | None = None
+    engine: NonEmptyStr
+    model: NonEmptyStr
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Content
+    segments: list[TranscriptSegment]
+    chapters: list[Chapter] | None = None
+    summary: Summary | None = None
+
+
+__all__.append("TranscriptDoc")
