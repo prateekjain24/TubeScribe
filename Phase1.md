@@ -494,6 +494,11 @@ Verification:
 **Dependencies:** EXPORT-002, MODEL-005
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/exporters/json_exporter.py` with `JSONExporter` (`name="json"`, `extension=".json"`).
+- Uses `TranscriptDoc.model_dump_json()` (orjson-backed) and `write_atomic()` for deterministic, atomic UTF‑8 writes.
+
 ### EXPORT-004: Add JSON Pretty Printing
 **Acceptance Criteria:**
 - Add indent option for readability
