@@ -5,7 +5,14 @@ from importlib.metadata import PackageNotFoundError, version
 import typer
 from rich.console import Console
 
-app = typer.Typer(no_args_is_help=True, add_completion=False)
+app = typer.Typer(
+    no_args_is_help=True,
+    add_completion=False,
+    help="ytx: YouTube transcription CLI (Whisper/Gemini)",
+    pretty_exceptions_enable=False,
+    pretty_exceptions_show_locals=False,
+    pretty_exceptions_short=True,
+)
 console = Console()
 
 
@@ -18,7 +25,7 @@ def _pkg_version() -> str:
 
 @app.callback()
 def _root(verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output")) -> None:
-    """ytx: YouTube transcription CLI (Whisper/Gemini)."""
+    """CLI foundation and global options."""
     # Placeholder for global options; rich console is configured per-command.
     _ = verbose
 
@@ -37,4 +44,3 @@ def hello(name: str = "world") -> None:
 
 if __name__ == "__main__":
     app()
-

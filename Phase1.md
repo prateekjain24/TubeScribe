@@ -584,6 +584,11 @@ Verification:
 **Dependencies:** SETUP-004
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- `ytx/src/ytx/cli.py` defines a Typer app with `no_args_is_help=True`, `add_completion=False`, root `help`, and `pretty_exceptions_enable=False` (with locals disabled).
+- `uv run ytx --help` shows the configured help and commands.
+
 ### CLI-002: Create Main Entry Point
 **Acceptance Criteria:**
 - Add if __name__ == "__main__" block
