@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ytx = "ytx:main"
+ytx = "ytx.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/yourname/ytx"

@@ -126,6 +126,12 @@ Verification:
 **Dependencies:** SETUP-004
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Updated `ytx/pyproject.toml` `[project.scripts]` to `ytx = "ytx.cli:app"`.
+- Added `ytx/src/ytx/cli.py` with a minimal Typer app (commands: `version-cmd`, `hello`).
+- `cd ytx && uv run ytx --help` shows usage and commands successfully.
+
 ---
 
 ## Sprint 2: Core Models & Configuration (10 tickets)
