@@ -377,6 +377,11 @@ Verification:
 **Dependencies:** DOWNLOAD-006
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Implemented `normalize_wav(src, dst, overwrite=False)` in `ytx/src/ytx/audio.py` using ffmpeg with `-ar 16000 -ac 1 -c:a pcm_s16le`.
+- Command builder `build_normalize_wav_command()` added for testability.
+
 ### DOWNLOAD-008: Add Audio Duration Check
 **Acceptance Criteria:**
 - Get duration using ffprobe
@@ -385,6 +390,11 @@ Verification:
 **Technical Notes:** Use ffprobe -show_entries
 **Dependencies:** DOWNLOAD-006
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Added `probe_duration(path)` in `ytx/src/ytx/audio.py` using ffprobe (`format=duration`, `nokey=1`).
+- Includes `build_ffprobe_duration_command()` and `ensure_ffprobe()`; raises clear errors on failure.
 
 ### DOWNLOAD-009: Implement File Caching Check
 **Acceptance Criteria:**

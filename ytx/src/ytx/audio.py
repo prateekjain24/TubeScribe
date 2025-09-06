@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-"""Audio utilities: ffmpeg wrappers and helpers."""
+"""Audio utilities: ffmpeg/ffprobe wrappers and helpers."""
 
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Sequence
 
 
 class FFmpegError(RuntimeError):
@@ -19,6 +18,11 @@ class FFmpegNotFound(RuntimeError):
 def ensure_ffmpeg() -> None:
     if not shutil.which("ffmpeg"):
         raise FFmpegNotFound("ffmpeg is required but not found on PATH")
+
+
+def ensure_ffprobe() -> None:
+    if not shutil.which("ffprobe"):
+        raise FFmpegNotFound("ffprobe is required but not found on PATH")
 
 
 def build_normalize_wav_command(src: Path, dst: Path) -> list[str]:
@@ -62,11 +66,52 @@ def normalize_wav(src: Path, dst: Path, *, overwrite: bool = False) -> Path:
     return dst
 
 
+def build_ffprobe_duration_command(path: Path) -> list[str]:
+    return [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(path),
+    ]
+
+
+def probe_duration(path: Path) -> float:
+    """Return duration in seconds using ffprobe.
+
+    Raises FFmpegError if duration cannot be determined.
+    """
+    ensure_ffprobe()
+    path = Path(path)
+    if not path.exists():
+        raise FFmpegError(f"file does not exist: {path}")
+    cmd = build_ffprobe_duration_command(path)
+    try:
+        proc = subprocess.run(cmd, check=False, text=True, capture_output=True)
+    except Exception as e:  # pragma: no cover
+        raise FFmpegError(f"ffprobe execution failed: {e}")
+    if proc.returncode != 0:
+        raise FFmpegError(f"ffprobe failed: {proc.stderr.strip()}")
+    out = (proc.stdout or "").strip()
+    try:
+        val = float(out)
+    except Exception as e:
+        raise FFmpegError(f"invalid ffprobe duration: {out!r}") from e
+    if not (val >= 0):
+        raise FFmpegError(f"negative duration reported: {val}")
+    return float(val)
+
+
 __all__ = [
     "FFmpegError",
     "FFmpegNotFound",
     "ensure_ffmpeg",
+    "ensure_ffprobe",
     "build_normalize_wav_command",
     "normalize_wav",
+    "build_ffprobe_duration_command",
+    "probe_duration",
 ]
-
