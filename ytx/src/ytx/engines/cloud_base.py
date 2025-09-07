@@ -7,9 +7,13 @@ override `_is_rate_limit_error` to provide provider-specific checks.
 """
 
 from tenacity import Retrying, stop_after_attempt, wait_random_exponential, retry_if_exception
+from ..errors import APIError
 
 
 class CloudEngineBase:
+    @property
+    def _provider_name(self) -> str:  # pragma: no cover - trivial
+        return getattr(self, "name", "cloud")
     def _is_rate_limit_error(self, e: Exception) -> bool:  # pragma: no cover - override in engines as needed
         s = str(e).lower()
         return any(x in s for x in ("rate limit", "quota", "too many requests", "429"))
@@ -29,9 +33,8 @@ class CloudEngineBase:
                     return model.generate_content(parts, request_options={"timeout": timeout})  # type: ignore[attr-defined]
                 except Exception as e:
                     if not self._is_rate_limit_error(e):
-                        raise
+                        raise APIError("API request failed", provider=self._provider_name, cause=e)
                     raise
 
 
 __all__ = ["CloudEngineBase"]
-

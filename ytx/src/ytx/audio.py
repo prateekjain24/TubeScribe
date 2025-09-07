@@ -7,11 +7,14 @@ import subprocess
 from pathlib import Path
 
 
-class FFmpegError(RuntimeError):
+from .errors import FileSystemError
+
+
+class FFmpegError(FileSystemError):
     pass
 
 
-class FFmpegNotFound(RuntimeError):
+class FFmpegNotFound(FileSystemError):
     pass
 
 

@@ -100,7 +100,10 @@ def canonical_url(video_id: str) -> str:
     return f"https://youtu.be/{video_id}"
 
 
-class YTDLPError(RuntimeError):
+from .errors import ExternalToolError
+
+
+class YTDLPError(ExternalToolError):
     """Raised when yt-dlp operations fail (populated in DOWNLOAD-002)."""
 
 
@@ -183,7 +186,9 @@ def fetch_metadata(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired as e:
-        raise YTDLPError(f"yt-dlp timed out after {timeout}s") from e
+        from .errors import TimeoutError
+
+        raise TimeoutError(f"yt-dlp timed out after {timeout}s")
 
     if proc.returncode != 0:
         stderr = (proc.stderr or "").strip()
@@ -343,7 +348,9 @@ def _download_audio_once(
             timeout=timeout,
         )
     except subprocess.TimeoutExpired as e:
-        raise YTDLPError(f"yt-dlp download timed out after {timeout}s") from e
+        from .errors import TimeoutError
+
+        raise TimeoutError(f"yt-dlp download timed out after {timeout}s")
 
     if proc.returncode != 0:
         stderr = (proc.stderr or "").strip()

@@ -604,7 +604,8 @@ Implementation status
 - Add user-friendly messages
   **Technical Notes:** Inherit from Exception
   **Dependencies:** None
-  **Time:** 2 hours
+**Time:** 2 hours
+**Status:** Done — Added `ytx/src/ytx/errors.py` with `YTXError` base (codes/messages) and subclasses (Network/API/RateLimit/FileSystem/Timeout/etc.) plus `friendly_error()`.
 
 ### ERROR-002: Add Network Error Handling
 
@@ -615,7 +616,8 @@ Implementation status
 - Show clear messages
   **Technical Notes:** Use tenacity
   **Dependencies:** ERROR-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Cloud engines use Tenacity with rate-limit detection; downloader has retries/timeouts mapped to `TimeoutError`. CLI prints friendly API/network messages.
 
 ### ERROR-003: Implement File System Errors
 
@@ -626,7 +628,8 @@ Implementation status
 - Graceful degradation
   **Technical Notes:** Catch OSError
   **Dependencies:** ERROR-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Atomic writes wrap `OSError` → `FileSystemError`; ffmpeg/cache/engine errors now inherit `YTXError` for unified handling.
 
 ### ERROR-004: Add API Error Handling
 
@@ -637,7 +640,8 @@ Implementation status
 - Suggest solutions
   **Technical Notes:** Check quota limits
   **Dependencies:** ERROR-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Cloud base wraps non-rate exceptions into `APIError(provider=…)`; Gemini respects `transcribe_timeout`. CLI surfaces concise API messages.
 
 ### ERROR-005: Create Recovery Strategies
 
@@ -648,7 +652,8 @@ Implementation status
 - Save progress on failure
   **Technical Notes:** Write partial results
   **Dependencies:** ERROR-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Fallback to Whisper is implemented; on by-chapter failures, partial results are stitched and written to cache as a recovery step.
 
 ### ERROR-006: Add Input Validation
 
@@ -659,7 +664,8 @@ Implementation status
 - Verify URL accessibility
   **Technical Notes:** Early validation
   **Dependencies:** ERROR-001
-  **Time:** 2 hours
+**Time:** 2 hours
+**Status:** Done — Early URL/engine/model/output-dir checks; chapter mode warns when no chapters are present; dependencies checked on use with friendly guidance.
 
 ### ERROR-007: Implement Timeout Handling
 
@@ -670,7 +676,8 @@ Implementation status
 - Handle gracefully
   **Technical Notes:** Default 5 min timeout
   **Dependencies:** ERROR-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Config adds timeouts (`network_timeout`, `download_timeout`, `transcribe_timeout`, `summarize_timeout`); downloader and Gemini calls honor them; errors are handled gracefully.
 
 ### ERROR-008: Create Error Reporting
 

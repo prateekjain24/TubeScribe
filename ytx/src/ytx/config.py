@@ -42,6 +42,11 @@ class AppConfig(BaseSettings):
     # Cross-provider options
     timestamp_policy: TimestampPolicy = Field(default="native", description="Timestamp handling policy")
     engine_options: dict[str, Any] = Field(default_factory=dict, description="Provider-specific options")
+    # Timeouts (seconds)
+    network_timeout: int = Field(default=90, description="Metadata/network timeout (s)")
+    download_timeout: int = Field(default=1800, description="Download timeout (s)")
+    transcribe_timeout: int = Field(default=600, description="Transcription API timeout (s)")
+    summarize_timeout: int = Field(default=180, description="Summarization API timeout (s)")
 
     # whisper.cpp (Metal) settings
     whispercpp_bin: str = Field(default="main", description="Path or name of whisper.cpp binary (main)")

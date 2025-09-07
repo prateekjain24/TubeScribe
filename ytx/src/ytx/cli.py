@@ -222,11 +222,11 @@ def transcribe(
 
     # Stage 1: metadata
     with console.status("[bold blue]Fetching metadata…", spinner="dots"):
-        meta = fetch_metadata(url)
+        meta = fetch_metadata(url, timeout=cfg.network_timeout)
 
     # Stage 2: download audio
     with console.status("[bold green]Downloading audio…", spinner="dots"):
-        audio_path = download_audio(meta, outdir)
+        audio_path = download_audio(meta, outdir, timeout=cfg.download_timeout)
 
     # Stage 3: normalize to WAV
     with console.status("[bold green]Normalizing audio…", spinner="dots"):
@@ -263,6 +263,7 @@ def transcribe(
         used_engine_name = engine
         engine_for_lang = eng
         segments = []
+        chapter_results: list[tuple[int, any, list]] | None = None
         chapter_results: list[tuple[int, any, list]] | None = None
         try:
             if by_chapter and (meta.chapters or []):
@@ -301,6 +302,7 @@ def transcribe(
                             # Fallback per chapter not implemented; bubble up
                             raise
                         results.append((i, ch, segs))
+                        chapter_results = results
                         completed += 1
                         progress.update(chapter_tasks[i], completed=1.0)
                         progress.update(task, completed=max(0.0, min(1.0, completed / n)))
@@ -310,9 +312,9 @@ def transcribe(
                 segments = stitch_chapter_segments(offset_chapter_segments(results))
                 # Mark overall complete
                 progress.update(task, completed=1.0)
-            else:
-                # Single-pass transcription
-                segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
+                else:
+                    # Single-pass transcription
+                    segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
         except Exception as e:
             if engine == "gemini" and fallback:
                 console.print(f"[yellow]Gemini failed ({e}); falling back to Whisper[/]")
@@ -346,6 +348,7 @@ def transcribe(
                             i = futs[fut]
                             i, ch, segs = fut.result()
                             results.append((i, ch, segs))
+                            chapter_results = results
                             completed += 1
                     results.sort(key=lambda t: t[0])
                     chapter_results = results
@@ -353,6 +356,27 @@ def transcribe(
                 else:
                     segments = whisper_eng.transcribe(wav_path, config=used_cfg, on_progress=on_prog)
             else:
+                # Recovery strategy: write partial results if available and by-chapter was used
+                if by_chapter and chapter_results:
+                    try:
+                        partial_segments = stitch_chapter_segments(offset_chapter_segments(chapter_results))
+                        partial_doc = TranscriptDoc(
+                            video_id=vid,
+                            source_url=url,
+                            title=meta.title,
+                            duration=meta.duration,
+                            language=cfg.language,
+                            engine=used_engine_name,
+                            model=cfg.model,
+                            segments=partial_segments,
+                            chapters=meta.chapters,
+                        )
+                        # Write a partial JSON next to intended cache dir
+                        from .exporters.manager import export_all, parse_formats
+                        export_all(partial_doc, paths.dir, parse_formats("json"))
+                        console.print("[yellow]Wrote partial transcript due to failure[/]")
+                    except Exception:
+                        pass
                 raise
 
     # Optional language detection if not provided
@@ -545,3 +569,11 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         console.print("[yellow]Aborted by user[/]")
         raise SystemExit(130)
+    except Exception as e:
+        try:
+            from .errors import friendly_error
+
+            console.print(f"[red]{friendly_error(e)}[/]")
+            raise SystemExit(1)
+        except Exception:
+            raise

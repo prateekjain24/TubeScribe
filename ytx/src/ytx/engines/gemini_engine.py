@@ -170,7 +170,7 @@ class GeminiEngine(CloudEngineBase, TranscriptionEngine):
                 on_progress(0.05)
             except Exception:
                 pass
-        resp = self._generate_with_retries(model, [file, prompt])
+        resp = self._generate_with_retries(model, [file, prompt], timeout=getattr(config, 'transcribe_timeout', 600))
         payload_text = self._extract_text_from_response(resp)
         data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
         try:
@@ -211,7 +211,7 @@ class GeminiEngine(CloudEngineBase, TranscriptionEngine):
                 chunk_path = tdir / f"chunk_{idx:04d}.wav"
                 slice_wav_segment(audio_path, chunk_path, start=start, end=end)
                 file = self._upload_audio(chunk_path)
-                resp = self._generate_with_retries(model, [file, prompt], context=f"chunk {idx}")
+                resp = self._generate_with_retries(model, [file, prompt], timeout=getattr(config, 'transcribe_timeout', 600))
                 payload_text = self._extract_text_from_response(resp)
                 data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
                 segs = self._parse_segments_from_data_or_text(data, payload_text, total_duration=(end - start))

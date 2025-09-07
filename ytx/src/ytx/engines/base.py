@@ -7,7 +7,10 @@ from ..config import AppConfig
 from ..models import TranscriptSegment
 
 
-class EngineError(RuntimeError):
+from ..errors import YTXError
+
+
+class EngineError(YTXError):
     """Raised by engines on unrecoverable errors."""
 
 

@@ -175,7 +175,10 @@ def artifacts_exist(paths: ArtifactPaths) -> bool:
 # --- CACHE-004: Artifact Reader ---
 
 
-class CacheError(RuntimeError):
+from .errors import FileSystemError, YTXError
+
+
+class CacheError(FileSystemError):
     pass
 
 
@@ -260,13 +263,16 @@ def write_bytes_atomic(path: Path, data: bytes) -> Path:
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as tmp:
-        tmp.write(data)
-        tmp.flush()
-        os.fsync(tmp.fileno())
-        tmp_path = Path(tmp.name)
-    tmp_path.replace(path)
-    return path
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as tmp:
+            tmp.write(data)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+            tmp_path = Path(tmp.name)
+        tmp_path.replace(path)
+        return path
+    except OSError as e:
+        raise FileSystemError(f"atomic write failed: {path}", cause=e)
 
 
 # --- CACHE-006: Cache Metadata ---

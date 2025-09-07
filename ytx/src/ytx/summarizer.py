@@ -13,8 +13,12 @@ from dotenv import load_dotenv
 from .engines.gemini_engine import _resolve_model_name  # reuse model selection
 
 
-class SummarizerError(RuntimeError):
-    pass
+from .errors import YTXError
+
+
+class SummarizerError(YTXError):
+    def __init__(self, message: str):
+        super().__init__(code="SUMMARY", message=message)
 
 
 def _load_api_key() -> str:
