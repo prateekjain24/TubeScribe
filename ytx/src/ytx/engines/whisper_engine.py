@@ -206,9 +206,5 @@ class WhisperEngine(TranscriptionEngine):
         except Exception:
             return None
 
-    def detect_language(self, audio_path: Path, *, config: AppConfig) -> str | None:
-        # Optional implementation in later tickets; return None by default.
-        return None
-
 
 __all__ = ["WhisperEngine"]
