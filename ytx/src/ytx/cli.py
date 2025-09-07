@@ -24,6 +24,12 @@ from .cache import (
     expire_cache,
     get_ttl_seconds_from_env,
 )
+from .chapters import (
+    slice_audio_by_chapters,
+    process_chapters,
+    offset_chapter_segments,
+    stitch_chapter_segments,
+)
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -113,6 +119,17 @@ def transcribe(
         "--fallback",
         help="When using Gemini, fallback to Whisper on errors",
     ),
+    by_chapter: bool = typer.Option(
+        False,
+        "--by-chapter",
+        help="Transcribe by chapters when available",
+    ),
+    parallel_chapters: bool = typer.Option(
+        True,
+        "--parallel-chapters/--no-parallel-chapters",
+        help="Process chapters concurrently when using --by-chapter",
+    ),
+    chapter_overlap: float = typer.Option(2.0, "--chapter-overlap", help="Seconds of overlap between chapter slices"),
 ) -> None:
     """Transcribe a YouTube video (stub)."""
     # CLI-008: Parameter validation
@@ -209,19 +226,93 @@ def transcribe(
         used_cfg = cfg
         used_engine_name = engine
         engine_for_lang = eng
+        segments = []
         try:
-            segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
+            if by_chapter and (meta.chapters or []):
+                # Chapter-aware processing path
+                parts = slice_audio_by_chapters(
+                    wav_path,
+                    meta.chapters or [],
+                    out_dir=paths.dir / "chapters",
+                    overlap_seconds=chapter_overlap,
+                )
+                n = len(parts)
+                # Build per-chapter progress tasks
+                chapter_tasks: dict[int, int] = {}
+                for i, ch, _ in parts:
+                    title = (ch.title or f"Chapter {i}")
+                    chapter_tasks[i] = progress.add_task(f"Ch {i:02d}: {title}", total=1.0)
+
+                from concurrent.futures import ThreadPoolExecutor, as_completed
+                import os
+
+                max_workers = min(n, os.cpu_count() or 4) if parallel_chapters else 1
+                results: list[tuple[int, any, list]] = []
+                def transcribe_one(i_ch_path):
+                    i, ch, path = i_ch_path
+                    segs = eng.transcribe(path, config=cfg, on_progress=None)
+                    return (i, ch, segs)
+
+                completed = 0
+                with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                    futs = {ex.submit(transcribe_one, item): item[0] for item in parts}
+                    for fut in as_completed(futs):
+                        i = futs[fut]
+                        try:
+                            i, ch, segs = fut.result()
+                        except Exception as e:
+                            # Fallback per chapter not implemented; bubble up
+                            raise
+                        results.append((i, ch, segs))
+                        completed += 1
+                        progress.update(chapter_tasks[i], completed=1.0)
+                        progress.update(task, completed=max(0.0, min(1.0, completed / n)))
+                # Sort, offset, and stitch
+                results.sort(key=lambda t: t[0])
+                segments = stitch_chapter_segments(offset_chapter_segments(results))
+                # Mark overall complete
+                progress.update(task, completed=1.0)
+            else:
+                # Single-pass transcription
+                segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
         except Exception as e:
             if engine == "gemini" and fallback:
                 console.print(f"[yellow]Gemini failed ({e}); falling back to Whisper[/]")
-                # Choose a reasonable Whisper model if the provided model is not a Whisper preset
                 whisper_presets = {"tiny","tiny.en","base","base.en","small","small.en","medium","medium.en","large-v1","large-v2","large-v3","large-v3-turbo"}
                 whisper_model = model if model in whisper_presets else "small"
                 used_cfg = load_config(engine="whisper", model=whisper_model)
                 used_engine_name = "whisper"
                 whisper_eng = WhisperEngine()
                 engine_for_lang = whisper_eng
-                segments = whisper_eng.transcribe(wav_path, config=used_cfg, on_progress=on_prog)
+                # Retry with whisper (single or chapters)
+                if by_chapter and (meta.chapters or []):
+                    parts = slice_audio_by_chapters(
+                        wav_path,
+                        meta.chapters or [],
+                        out_dir=paths.dir / "chapters",
+                        overlap_seconds=chapter_overlap,
+                    )
+                    n = len(parts)
+                    from concurrent.futures import ThreadPoolExecutor, as_completed
+                    import os
+                    max_workers = min(n, os.cpu_count() or 4) if parallel_chapters else 1
+                    results: list[tuple[int, any, list]] = []
+                    def transcribe_one(i_ch_path):
+                        i, ch, path = i_ch_path
+                        segs = whisper_eng.transcribe(path, config=used_cfg, on_progress=None)
+                        return (i, ch, segs)
+                    completed = 0
+                    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                        futs = {ex.submit(transcribe_one, item): item[0] for item in parts}
+                        for fut in as_completed(futs):
+                            i = futs[fut]
+                            i, ch, segs = fut.result()
+                            results.append((i, ch, segs))
+                            completed += 1
+                    results.sort(key=lambda t: t[0])
+                    segments = stitch_chapter_segments(offset_chapter_segments(results))
+                else:
+                    segments = whisper_eng.transcribe(wav_path, config=used_cfg, on_progress=on_prog)
             else:
                 raise
 

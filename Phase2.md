@@ -398,6 +398,7 @@ Implementation status
 **Technical Notes:** Use ThreadPoolExecutor
 **Dependencies:** CHAPTER-004
 **Time:** 4 hours
+**Status:** Done — Added parallel processing via ThreadPoolExecutor (limited to CPU count) to transcribe per-chapter concurrently; results are sorted to maintain order.
 
 ### CHAPTER-009: Add Chapter Progress Display
 **Acceptance Criteria:**
@@ -407,6 +408,7 @@ Implementation status
 **Technical Notes:** Use rich progress bars
 **Dependencies:** CHAPTER-008
 **Time:** 3 hours
+**Status:** Done — CLI shows per-chapter progress with chapter titles and an overall progress bar during chapter-based transcription.
 
 ### CHAPTER-010: Create Chapter Summary Option
 **Acceptance Criteria:**
