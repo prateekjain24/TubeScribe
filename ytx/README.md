@@ -5,7 +5,7 @@ CLI that downloads YouTube audio and produces transcripts and captions using:
 - Local Whisper (faster-whisper / CTranslate2)
 - Whisper.cpp (Metal acceleration on Apple Silicon)
 
-Managed with uv, using the `src` layout.
+Managed with venv+pip (recommended) or uv, using the `src` layout.
 
 Features
 
@@ -27,20 +27,44 @@ Requirements
 
 Install (dev)
 
-- Enter project: `cd ytx`
-- Install deps: `uv sync`
-- Help: `uv run ytx --help`
+- Option A: venv + pip (recommended)
+  - `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
+  - `python -m pip install -U pip setuptools wheel`
+  - `python -m pip install -e .`
+  - `ytx --help`
+- Option B: uv
+  - `cd ytx && uv sync`
+  - `uv run ytx --help`
+
+Running locally without installing
+
+- From repo root:
+  - `export PYTHONPATH="$(pwd)/ytx/src"`
+  - `cd ytx && python3 -m ytx.cli --help`
+  - Example: `python3 -m ytx.cli summarize-file 0jpcFxY_38k.json --write`
+
+Note: Avoid running the `ytx` console script from inside the `ytx/` folder; Python may shadow the installed package. Use the module form or run from repo root.
 
 Usage (CLI)
 
 - Whisper (CPU by default):
-  - `uv run ytx transcribe <url> --engine whisper --model small`
+  - `ytx transcribe <url> --engine whisper --model small`
 - Whisper (larger model):
-  - `uv run ytx transcribe <url> --engine whisper --model large-v3-turbo`
-- Choose output directory:
-  - `uv run ytx transcribe <url> --engine whisper --output-dir ./artifacts`
+  - `ytx transcribe <url> --engine whisper --model large-v3-turbo`
+- Gemini (best‑effort timestamps):
+  - `ytx transcribe <url> --engine gemini --timestamps chunked --fallback`
+- Chapters + summaries:
+  - `ytx transcribe <url> --by-chapter --parallel-chapters --chapter-overlap 2.0 --summarize-chapters --summarize`
+- Engine options and timestamp policy:
+  - `ytx transcribe <url> --engine-opts '{"utterances":true}' --timestamps native`
+- Output dir:
+  - `ytx transcribe <url> --output-dir ./artifacts`
 - Verbose logging:
-  - `uv run ytx --verbose transcribe <url> --engine whisper`
+  - `ytx --verbose transcribe <url> --engine whisper`
+- Health check:
+  - `ytx health` (ffmpeg, API key presence, network)
+- Summarize an existing transcript JSON:
+  - `ytx summarize-file /path/to/<video_id>.json --write`
 
 Metal (Apple Silicon) via whisper.cpp
 
@@ -56,17 +80,18 @@ Metal (Apple Silicon) via whisper.cpp
 Outputs
 
 - JSON (`<video_id>.json`): TranscriptDoc
-  - keys: `video_id, source_url, title, duration, language, engine, model, created_at, segments[]`
+  - keys: `video_id, source_url, title, duration, language, engine, model, created_at, segments[], chapters?, summary?`
   - segment: `{id, start, end, text, confidence?}` (seconds for time)
 - SRT (`<video_id>.srt`): line-wrapped captions (2 lines max)
+- Cache artifacts (under XDG cache root): `meta.json`, `summary.json`, transcript and captions.
 
 Configuration (.env)
 
 - Copy `.env.example` → `.env`, then adjust:
-  - `YTX_ENGINE` (default `whisper`) and `WHISPER_MODEL` (e.g., `large-v3-turbo`)
-  - `GEMINI_API_KEY` (reserved for future Gemini support)
+  - `GEMINI_API_KEY` (for Gemini)
+  - `YTX_ENGINE` (default `whisper`), `WHISPER_MODEL` (e.g., `large-v3-turbo`)
   - `YTX_WHISPERCPP_BIN` and `YTX_WHISPERCPP_MODEL_PATH` for whisper.cpp
-  - Optional: `YTX_CACHE_DIR`, `YTX_OUTPUT_DIR`, concurrency and timeouts
+  - Optional: `YTX_CACHE_DIR`, `YTX_OUTPUT_DIR`, `YTX_ENGINE_OPTS` (JSON), and timeouts (`YTX_NETWORK_TIMEOUT`, etc.)
 
 Restricted videos & cookies
 
@@ -83,12 +108,12 @@ Performance Tips
 Development
 
 - Structure: code in `src/ytx/`, CLI in `src/ytx/cli.py`, engines in `src/ytx/engines/`, exporters in `src/ytx/exporters/`.
-- Tests: `uv run pytest -q` (add tests under `ytx/tests/`).
-- Lint/format (if configured): `uv run ruff check .` / `uv run ruff format .`.
+- Tests: `pytest -q` (add tests under `ytx/tests/`).
+- Lint/format (if configured): `ruff check .` / `ruff format .`.
 
 Roadmap
 
 - Add VTT/TXT exporters, format selection (`--formats json,srt,vtt,txt`)
-- Chapters-aware transcription and summaries
-- Gemini transcription/summarization option
-- Caching and resume for repeat runs
+- OpenAI/Deepgram/ElevenLabs engines via shared cloud base
+- More resilient chunking/alignment; diarization options where supported
+- CI + tests; docs polish; performance tuning
