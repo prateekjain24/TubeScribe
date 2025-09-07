@@ -767,6 +767,11 @@ Verification:
 **Dependencies:** WHISPER-003
 **Time:** 4 hours
 
+Status: Completed
+Verification:
+- `WhisperEngine` now loads models via `WhisperModel(model, device=…, compute_type=…)` and caches by key `(model, device, compute_type)` to avoid repeated loads.
+- Device mapping supports {cpu,cuda,auto}; maps `metal` to `cpu` for safety. Friendly `EngineError` on load failures (e.g., network or invalid model).
+
 ### WHISPER-005: Add Model Size Validation
 **Acceptance Criteria:**
 - Validate model name (tiny to large-v3-turbo)
