@@ -823,6 +823,10 @@ Verification:
 **Dependencies:** WHISPER-007
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- `WhisperEngine.transcribe()` calls `model.transcribe(..., batch_size=8)` and disables word timestamps for speed.
+
 ### WHISPER-009: Convert to Segment Models
 **Acceptance Criteria:**
 - Convert Whisper segments to TranscriptSegment
@@ -832,6 +836,11 @@ Verification:
 **Dependencies:** WHISPER-007, MODEL-002
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Converts each yielded segment to `TranscriptSegment(id, start, end, text, confidence=avg_logprob)` using `getattr`.
+- Enforces monotonic time boundaries and minimum 1ms duration to avoid overlaps.
+
 ### WHISPER-010: Add Language Detection
 **Acceptance Criteria:**
 - Auto-detect language if not specified
@@ -840,6 +849,10 @@ Verification:
 **Technical Notes:** Use detect_language() method
 **Dependencies:** WHISPER-007
 **Time:** 3 hours
+
+Status: Completed
+Verification:
+- Implemented `detect_language()` that invokes `model.transcribe(..., language=None, without_timestamps=True, beam_size=1, batch_size=8)` and returns `info.language` when available.
 
 ### WHISPER-011: Implement Progress Callback
 **Acceptance Criteria:**

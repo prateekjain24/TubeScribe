@@ -121,11 +121,14 @@ class WhisperEngine(TranscriptionEngine):
                 language=config.language,
                 vad_filter=True,
                 beam_size=5,
+                batch_size=8,
+                word_timestamps=False,
             )
         except Exception as e:  # pragma: no cover
             raise EngineError(f"Whisper transcription failed: {e}") from e
 
         results: list[TranscriptSegment] = []
+        prev_end = 0.0
         for i, s in enumerate(segments_iter):
             try:
                 start = float(getattr(s, "start", 0.0) or 0.0)
@@ -136,8 +139,31 @@ class WhisperEngine(TranscriptionEngine):
                 continue
             if not text:
                 continue
+            # Enforce monotonic boundaries
+            if start < prev_end:
+                start = prev_end
+            if end <= start:
+                end = start + 0.001
+            prev_end = end
             results.append(TranscriptSegment(id=i, start=start, end=end, text=text, confidence=conf))
         return results
+
+    def detect_language(self, audio_path: Path, *, config: AppConfig) -> str | None:
+        self._ensure_available()
+        model = self._get_model(config)
+        try:
+            _, info = model.transcribe(
+                str(audio_path),
+                language=None,  # auto-detect
+                vad_filter=True,
+                beam_size=1,
+                batch_size=8,
+                without_timestamps=True,
+                word_timestamps=False,
+            )
+            return getattr(info, "language", None)
+        except Exception:
+            return None
 
     def detect_language(self, audio_path: Path, *, config: AppConfig) -> str | None:
         # Optional implementation in later tickets; return None by default.
