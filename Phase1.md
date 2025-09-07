@@ -752,6 +752,12 @@ Verification:
 **Dependencies:** WHISPER-002
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- Added `ytx/src/ytx/engines/whisper_engine.py` with `WhisperEngine` registered as `name="whisper"`.
+- Imports `faster_whisper.WhisperModel` when available; otherwise defers error until usage with a clear message.
+- `transcribe()` currently raises `EngineError` (implemented in later tickets), `detect_language()` returns `None` by default.
+
 ### WHISPER-004: Implement Model Loading
 **Acceptance Criteria:**
 - Load faster-whisper model
