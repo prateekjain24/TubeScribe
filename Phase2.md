@@ -879,6 +879,7 @@ Implementation status
   **Technical Notes:** Use memory_profiler
   **Dependencies:** All features complete
   **Time:** 4 hours
+  **Status:** Done — Reduced import-time memory footprint via lazy imports for heavy deps (faster‑whisper, google‑generativeai).
 
 ### POLISH-002: Improve Startup Time
 
@@ -890,6 +891,7 @@ Implementation status
   **Technical Notes:** Measure with time
   **Dependencies:** POLISH-001
   **Time:** 3 hours
+  **Status:** Done — Avoid heavy imports at CLI import time; engines import dependencies on first use (lazy).
 
 ### POLISH-003: Add Colored Output
 
@@ -901,6 +903,7 @@ Implementation status
   **Technical Notes:** Error=red, success=green
   **Dependencies:** None
   **Time:** 2 hours
+  **Status:** Done — Health check output colors statuses (ok/present green, errors red, absent yellow); Rich styling elsewhere.
 
 ### POLISH-004: Enhance Progress Bars
 
@@ -912,6 +915,7 @@ Implementation status
   **Technical Notes:** Use rich.progress
   **Dependencies:** POLISH-003
   **Time:** 3 hours
+  **Status:** Done — Transcribe progress includes percentage alongside bar and ETA; download shows speed/ETA where available.
 
 ### POLISH-005: Create Debug Mode
 
@@ -923,6 +927,7 @@ Implementation status
   **Technical Notes:** Include timings
   **Dependencies:** None
   **Time:** 2 hours
+  **Status:** Done — Added global `--debug` to enable verbose logging and extra diagnostics.
 
 ### POLISH-006: Add Telemetry (Optional)
 
@@ -945,6 +950,7 @@ Implementation status
   **Technical Notes:** Check GitHub releases
   **Dependencies:** None
   **Time:** 3 hours
+  **Status:** Done — Added `ytx update-check` to compare local version with latest GitHub release and report status.
 
 ### POLISH-008: Final Integration Test
 

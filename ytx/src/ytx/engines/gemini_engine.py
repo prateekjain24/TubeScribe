@@ -26,12 +26,7 @@ from ..config import AppConfig
 from ..models import TranscriptSegment
 from . import register_engine
 
-try:  # Optional dependency
-    import google.generativeai as genai  # type: ignore
-    _GENAI_AVAILABLE = True
-except Exception:  # pragma: no cover - dependency not installed
-    genai = None  # type: ignore
-    _GENAI_AVAILABLE = False
+_GENAI_AVAILABLE = None  # lazy import
 
 
 def _load_api_key() -> str:
@@ -51,15 +46,21 @@ def _load_api_key() -> str:
 
 
 def _ensure_client_configured() -> None:
+    global _GENAI_AVAILABLE, genai
+    if _GENAI_AVAILABLE is None:
+        try:
+            import google.generativeai as genai  # type: ignore
+            globals()['genai'] = genai  # type: ignore
+            _GENAI_AVAILABLE = True
+        except Exception:
+            _GENAI_AVAILABLE = False
     if not _GENAI_AVAILABLE:
-        raise EngineError(
-            "google-generativeai is not installed. Install it via 'uv add google-generativeai'"
-        )
+        raise EngineError(code="ENGINE", message="google-generativeai is not installed. Install it via 'pip install google-generativeai'")
     key = _load_api_key()
     try:
         genai.configure(api_key=key)  # type: ignore[attr-defined]
     except Exception as e:  # pragma: no cover - depends on library version
-        raise EngineError(f"Failed to configure Gemini client: {e}") from e
+        raise EngineError(code="ENGINE", message=f"Failed to configure Gemini client: {e}", cause=e)
 
 
 def _resolve_model_name(model: str | None) -> str:

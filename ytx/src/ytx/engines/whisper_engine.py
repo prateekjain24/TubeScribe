@@ -21,12 +21,7 @@ from ..models import TranscriptSegment
 from . import register_engine
 from ..audio import probe_duration
 
-try:  # Import faster-whisper if available
-    from faster_whisper import WhisperModel  # type: ignore
-    _FW_AVAILABLE = True
-except Exception:  # pragma: no cover - optional dependency surface
-    WhisperModel = None  # type: ignore
-    _FW_AVAILABLE = False
+_FW_AVAILABLE = None  # lazy import status
 
 
 @register_engine
@@ -34,19 +29,23 @@ class WhisperEngine(TranscriptionEngine):
     name = "whisper"
 
     def __init__(self) -> None:  # light ctor; defer heavy work to methods
-        if not _FW_AVAILABLE:
-            # Do not raise here to allow help/registry to function without the dep.
-            # Raise only when attempting to use the engine.
-            pass
+        # Lazy import; no heavy work on construction
+        pass
 
     # Simple in-process cache of loaded models keyed by (model, device, compute_type)
     _MODEL_CACHE: Dict[Tuple[str, str, str], Any] = {}
 
     def _ensure_available(self) -> None:
+        global _FW_AVAILABLE
+        if _FW_AVAILABLE is None:
+            try:
+                from faster_whisper import WhisperModel as _WM  # type: ignore
+                globals()['WhisperModel'] = _WM  # type: ignore
+                _FW_AVAILABLE = True
+            except Exception:  # pragma: no cover
+                _FW_AVAILABLE = False
         if not _FW_AVAILABLE:
-            raise EngineError(
-                "faster-whisper is not installed. Install it via 'uv add faster-whisper'"
-            )
+            raise EngineError(code="ENGINE", message="faster-whisper is not installed. Install it via 'pip install faster-whisper'")
 
     @staticmethod
     def _map_device(device: str) -> str:

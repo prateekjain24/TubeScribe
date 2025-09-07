@@ -54,6 +54,7 @@ def _pkg_version() -> str:
 @app.callback()
 def _root(
     verbose: bool = typer.Option(False, "--verbose", help="Enable verbose output"),
+    debug: bool = typer.Option(False, "--debug", help="Enable debug logging and extra diagnostics"),
     version_flag: bool = typer.Option(
         False,
         "--version",
@@ -66,7 +67,7 @@ def _root(
     if version_flag:
         console.print(f"ytx v{_pkg_version()}")
         raise typer.Exit(code=0)
-    configure_logging(verbose=verbose)
+    configure_logging(verbose=verbose or debug)
     # Optional: clean old cache entries if TTL is configured via env
     ttl = get_ttl_seconds_from_env()
     if ttl:
@@ -256,10 +257,10 @@ def transcribe(
             eng = WhisperEngine()
     else:
         eng = WhisperEngine()
-    from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn
+    from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn, TaskProgressColumn
 
     console.print(f"[bold]Transcribing[/]: {meta.title or meta.id} ({cfg.model})")
-    with Progress(TextColumn("{task.description}"), BarColumn(), TimeRemainingColumn()) as progress:
+    with Progress(TextColumn("{task.description}"), BarColumn(), TaskProgressColumn(), TimeRemainingColumn()) as progress:
         task = progress.add_task("Transcribing", total=1.0)
 
         def on_prog(r: float) -> None:
@@ -577,6 +578,28 @@ def summarize_file(
         console.print(f"[red]Error report written:[/] {report}")
         raise
 
+
+@app.command("update-check")
+def update_check(repo: str = typer.Option("prateekjain24/YT_transcript", "--repo", help="GitHub repo to check")) -> None:
+    """Check for the latest release on GitHub and compare with local version."""
+    import httpx
+    current = _pkg_version()
+    url = f"https://api.github.com/repos/{repo}/releases/latest"
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            r = client.get(url, headers={"User-Agent": "ytx-update/1.0"})
+            if r.status_code != 200:
+                console.print(f"[yellow]Update check failed: status {r.status_code}[/]")
+                return
+            data = r.json()
+            latest = data.get("tag_name") or data.get("name") or "unknown"
+            if latest.lstrip('v') != current:
+                console.print(f"[yellow]A new version may be available[/]: {latest} (local {current})")
+            else:
+                console.print(f"[green]You are up to date[/]: {current}")
+    except Exception as e:
+        console.print(f"[yellow]Update check error[/]: {e}")
+
 if __name__ == "__main__":
     try:
         app()
@@ -629,5 +652,6 @@ def health() -> None:
     table.add_column("Check")
     table.add_column("Status")
     for k, v in checks:
-        table.add_row(k, v)
+        color = "green" if v in ("ok", "present") or v.startswith("status 2") else ("yellow" if "absent" in v else "red")
+        table.add_row(k, f"[{color}]{v}[/]")
     console.print(table)
