@@ -2,7 +2,6 @@
 name = "ytx"
 version = "0.1.0"
 description = "CLI to transcribe YouTube audio via Whisper (local) or Gemini (cloud)"
-readme = "README.md"
 authors = [
     { name = "Prateek", email = "19404752+prateekjain24@users.noreply.github.com" }
 ]
@@ -32,3 +31,10 @@ Issues = "https://github.com/yourname/ytx/issues"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+  "README.md",
+  "pyproject.toml",
+  "src/ytx/**",
+]
