@@ -152,6 +152,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use genai.upload_file()
 **Dependencies:** GEMINI-003
 **Time:** 3 hours
+**Status:** Done — Implemented `_upload_audio()` using `genai.upload_file()` with MIME inference and a 2GB guard.
 
 ### GEMINI-005: Build Transcription Prompt
 **Acceptance Criteria:**
@@ -161,6 +162,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Specify exact JSON schema
 **Dependencies:** GEMINI-003
 **Time:** 3 hours
+**Status:** Done — Added `_build_prompt()` instructing strict JSON with segments [{start,end,text}] and optional language.
 
 ### GEMINI-006: Implement Basic Transcription
 **Acceptance Criteria:**
@@ -170,6 +172,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use generate_content()
 **Dependencies:** GEMINI-004, GEMINI-005
 **Time:** 4 hours
+**Status:** Done — Uploads audio, calls `generate_content([file, prompt])`, parses JSON segments or falls back to a single segment.
 
 ### GEMINI-007: Add Response Parser
 **Acceptance Criteria:**
