@@ -788,7 +788,7 @@ Implementation status
   **Technical Notes:** Use real 10s clip
   **Dependencies:** TEST-005
 **Time:** 4 hours
-**Status:** Pending — To add end‑to‑end test over a short clip (offline where possible).
+**Status:** Done — Added integration test using Typer CliRunner with patched downloader/engine and a tiny generated WAV; verifies end‑to‑end JSON+SRT artifacts creation in cache.
 
 ### TEST-007: Add CLI Tests
 

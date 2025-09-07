@@ -377,7 +377,6 @@ def transcribe(
                             segments=partial_segments,
                             chapters=meta.chapters,
                         )
-                        from .exporters.manager import export_all, parse_formats
                         export_all(partial_doc, paths.dir, parse_formats("json"))
                         console.print("[yellow]Wrote partial transcript due to failure[/]")
                 finally:
