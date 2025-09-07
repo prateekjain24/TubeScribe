@@ -728,7 +728,8 @@ Implementation status
 - Create test structure
   **Technical Notes:** Use pytest-asyncio
   **Dependencies:** None
-  **Time:** 2 hours
+**Time:** 2 hours
+**Status:** Done — Added pytest config in pyproject, conftest to include src/, and initial test suite.
 
 ### TEST-002: Create Test Fixtures
 
@@ -750,7 +751,8 @@ Implementation status
 - Serialization tests
   **Technical Notes:** 100% model coverage
   **Dependencies:** TEST-002
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Added unit tests for TranscriptSegment/TranscriptDoc (validation, JSON round‑trip).
 
 ### TEST-004: Add Downloader Tests
 
@@ -761,7 +763,8 @@ Implementation status
 - Verify retries
   **Technical Notes:** Use unittest.mock
   **Dependencies:** TEST-002
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Added tests for URL ID extraction and friendly yt‑dlp error hints.
 
 ### TEST-005: Create Engine Tests
 
@@ -772,7 +775,8 @@ Implementation status
 - Mock API calls
   **Technical Notes:** Test edge cases
   **Dependencies:** TEST-002
-  **Time:** 4 hours
+**Time:** 4 hours
+**Status:** Done — Added mocked engine tests: WhisperEngine with fake model segments and GeminiEngine with stubbed upload + generate (JSON segments). No network or heavy deps.
 
 ### TEST-006: Write Integration Tests
 
@@ -783,7 +787,8 @@ Implementation status
 - Verify cache behavior
   **Technical Notes:** Use real 10s clip
   **Dependencies:** TEST-005
-  **Time:** 4 hours
+**Time:** 4 hours
+**Status:** Pending — To add end‑to‑end test over a short clip (offline where possible).
 
 ### TEST-007: Add CLI Tests
 
@@ -794,7 +799,8 @@ Implementation status
 - Check error messages
   **Technical Notes:** Use typer.testing
   **Dependencies:** TEST-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Added Typer CliRunner smoke tests for --version, hello, and health (with monkeypatched ffmpeg/network); also URL validation.
 
 ### TEST-008: Create Performance Tests
 
@@ -805,7 +811,8 @@ Implementation status
 - Cache performance
   **Technical Notes:** Use pytest-benchmark
   **Dependencies:** TEST-006
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Pending — To add timing checks on representative clips/models.
 
 ### TEST-009: Write Comprehensive README
 
@@ -816,7 +823,8 @@ Implementation status
 - Troubleshooting guide
   **Technical Notes:** Include screenshots
   **Dependencies:** None
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Updated root and ytx READMEs with install (venv/uv), local run (module form), new CLI flags, chapters/summaries, error handling, and health checks.
 
 ### TEST-010: Create API Documentation
 
@@ -827,7 +835,8 @@ Implementation status
 - Type hints complete
   **Technical Notes:** Use docstrings
   **Dependencies:** None
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Pending — To add module overview and documented CLI/API usage.
 
 ### TEST-011: Add Configuration Guide
 
@@ -838,7 +847,8 @@ Implementation status
 - Provide .env.example
   **Technical Notes:** Include defaults
   **Dependencies:** TEST-009
-  **Time:** 2 hours
+**Time:** 2 hours
+**Status:** Pending — To document environment variables and config hashing.
 
 ### TEST-012: Create Release Checklist
 
@@ -849,7 +859,8 @@ Implementation status
 - Release notes template
   **Technical Notes:** Include in README
   **Dependencies:** TEST-009
-  **Time:** 2 hours
+**Time:** 2 hours
+**Status:** Pending — To add versioning, changelog, and release QA checklist.
 
 ---
 
