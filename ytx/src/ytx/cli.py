@@ -238,6 +238,7 @@ def transcribe(
         engine=used_engine_name,
         model=used_cfg.model,
         segments=segments,
+        chapters=meta.chapters,
     )
     # Export into cache directory (based on the engine actually used) and write meta
     final_paths = artifact_paths_for(video_id=meta.id, config=used_cfg, create=True)

@@ -368,6 +368,7 @@ Implementation status
 **Technical Notes:** Float precision important
 **Dependencies:** CHAPTER-004
 **Time:** 2 hours
+**Status:** Done — Added `offset_chapter_segments()` to shift per-chapter segments by chapter start into the global timeline, preserving precision and order.
 
 ### CHAPTER-006: Create Chapter-Aware Stitching
 **Acceptance Criteria:**
@@ -377,6 +378,7 @@ Implementation status
 **Technical Notes:** Sort by timestamp
 **Dependencies:** CHAPTER-005
 **Time:** 3 hours
+**Status:** Done — Added `stitch_chapter_segments()` leveraging the global stitcher to merge overlap duplicates while leaving `TranscriptDoc.chapters` intact.
 
 ### CHAPTER-007: Add Chapter Metadata to Output
 **Acceptance Criteria:**
@@ -386,6 +388,7 @@ Implementation status
 **Technical Notes:** Optional field
 **Dependencies:** CHAPTER-006
 **Time:** 2 hours
+**Status:** Done — CLI now includes `meta.chapters` in `TranscriptDoc`, serialized to JSON exporters.
 
 ### CHAPTER-008: Implement Parallel Chapter Processing
 **Acceptance Criteria:**

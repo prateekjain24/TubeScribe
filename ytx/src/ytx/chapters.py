@@ -97,6 +97,8 @@ __all__ = [
     "parse_yt_dlp_chapters",
     "slice_audio_by_chapters",
     "process_chapters",
+    "offset_chapter_segments",
+    "stitch_chapter_segments",
 ]
 
 
@@ -182,3 +184,43 @@ def process_chapters(
                 tmp.cleanup()
             except Exception:
                 pass
+
+
+def offset_chapter_segments(
+    items: List[Tuple[int, Chapter, List[TranscriptSegment]]]
+) -> List[TranscriptSegment]:
+    """Convert per-chapter local segments to global timeline by adding offsets.
+
+    Does not clamp to chapter end; boundary overlaps are resolved in stitching.
+    """
+    out: List[TranscriptSegment] = []
+    for idx, ch, segs in items:
+        base = float(ch.start)
+        for s in segs:
+            out.append(
+                TranscriptSegment(
+                    id=0,
+                    start=float(base) + float(s.start),
+                    end=float(base) + float(s.end),
+                    text=s.text,
+                    confidence=s.confidence,
+                )
+            )
+    # Renumber by time
+    out.sort(key=lambda s: (s.start, s.end))
+    for i, s in enumerate(out):
+        s.id = i
+    return out
+
+
+def stitch_chapter_segments(
+    segments: List[TranscriptSegment], *, epsilon: float = 0.01
+) -> List[TranscriptSegment]:
+    """Stitch overlapping/duplicate segments across chapter boundaries.
+
+    Uses global stitcher and preserves chronological order. Chapter markers are
+    not modified (they live in the TranscriptDoc.chapters field).
+    """
+    from .stitch import stitch_segments
+
+    return stitch_segments(segments, epsilon=epsilon)
