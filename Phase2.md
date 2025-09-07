@@ -220,6 +220,14 @@ Ticket notes
 - Update GEMINI‑005/006/007 expectations: timestamps are best‑effort; engines must tolerate plain text and fallback to chunked or none according to policy
 - Add OpenAI/Deepgram/ElevenLabs engine tickets later mirroring GEMINI structure, reusing the cloud base, and honoring `engine_options` + `--timestamps`
 
+Implementation status
+
+- Config: Added `timestamp_policy` and `engine_options` (env `YTX_ENGINE_OPTS`), included in `config_hash()`.
+- CLI: Added `--timestamps {native,chunked,none}` and `--engine-opts` (JSON) flags.
+- Cloud base: Introduced `engines/cloud_base.py` with retry helper; Gemini now extends this base.
+- Meta: `meta.json` now includes `provider` (and optional `request_id` later).
+- Engines: Gemini adapted to honor `timestamp_policy` (native/chunked/none) and reuse chunking/stitching.
+
 ### GEMINI-007: Add Response Parser
 **Acceptance Criteria:**
 - Parse Gemini JSON response
