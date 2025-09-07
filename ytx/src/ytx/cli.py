@@ -135,6 +135,11 @@ def transcribe(
         "--summarize-chapters/--no-summarize-chapters",
         help="Generate a short summary per chapter (uses Gemini)",
     ),
+    summarize: bool = typer.Option(
+        False,
+        "--summarize/--no-summarize",
+        help="Generate an overall transcript summary (uses Gemini)",
+    ),
 ) -> None:
     """Transcribe a YouTube video (stub)."""
     # CLI-008: Parameter validation
@@ -171,11 +176,37 @@ def transcribe(
     # Prepare artifact paths for this video/config
     paths = artifact_paths_for(video_id=vid, config=cfg, create=False)
 
-    # If cache exists and not overwriting, use it
+    # If cache exists and not overwriting, use it (but allow new summary generation)
     if not overwrite and artifacts_exist(paths):
         try:
             doc = read_transcript_doc(paths)
             console.print(f"[green]Cache hit[/]: {paths.dir}")
+            # Optional new summary on top of cached artifacts
+            if summarize and (getattr(doc, "summary", None) is None):
+                from .summarizer import GeminiSummarizer
+                from .cache import read_summary, write_summary
+                existing = read_summary(paths)
+                if existing and isinstance(existing, dict):
+                    try:
+                        from .models import Summary as SummaryModel
+
+                        doc.summary = SummaryModel.model_validate(existing)
+                    except Exception:
+                        doc.summary = None
+                if doc.summary is None:
+                    text = "\n".join(s.text for s in doc.segments if s.text).strip()
+                    if text:
+                        summarizer = GeminiSummarizer()
+                        res = summarizer.summarize_long(text, language=doc.language, bullets=5, max_tldr=500)
+                        from .models import Summary as SummaryModel
+
+                        doc.summary = SummaryModel(tldr=res.get("tldr", ""), bullets=list(res.get("bullets", [])))
+                        write_summary(paths, doc.summary.model_dump())
+                    else:
+                        console.print("[yellow]No text content to summarize[/]")
+                # Update transcript.json in cache with summary included
+                export_all(doc, paths.dir, parse_formats("json"))
+            # Write to output_dir if specified
             if output_dir:
                 written = export_all(doc, output_dir, parse_formats("json,srt"))
                 console.print("[green]Done[/]: " + ", ".join(p.name for p in written))
@@ -349,6 +380,24 @@ def transcribe(
         except Exception as e:
             console.print(f"[yellow]Chapter summaries unavailable: {e}[/]")
 
+    # Optional per-chapter summaries
+    # Optional overall summary (generate before export)
+    overall_summary = None
+    if summarize:
+        try:
+            from .summarizer import GeminiSummarizer
+            summarizer = GeminiSummarizer()
+            full_text = "\n".join(s.text for s in segments if s.text).strip()
+            if full_text:
+                res = summarizer.summarize_long(full_text, language=language, bullets=5, max_tldr=500)
+                from .models import Summary as SummaryModel
+
+                overall_summary = SummaryModel(tldr=res.get("tldr", ""), bullets=list(res.get("bullets", [])))
+            else:
+                console.print("[yellow]No text content to summarize[/]")
+        except Exception as e:
+            console.print(f"[yellow]Transcript summary unavailable: {e}[/]")
+
     # Stage 5: export
     doc = TranscriptDoc(
         video_id=meta.id,
@@ -360,11 +409,16 @@ def transcribe(
         model=used_cfg.model,
         segments=segments,
         chapters=chapters_for_doc,
+        summary=overall_summary,
     )
     # Export into cache directory (based on the engine actually used) and write meta
     final_paths = artifact_paths_for(video_id=meta.id, config=used_cfg, create=True)
     outdir_final = final_paths.dir
     written = export_all(doc, outdir_final, parse_formats("json,srt"))
+    if summarize and overall_summary is not None:
+        from .cache import write_summary
+
+        write_summary(final_paths, overall_summary.model_dump())
     write_meta(final_paths, build_meta_payload(video_id=meta.id, config=used_cfg, source=meta, provider=used_engine_name))
     console.print("[green]Done[/]: " + ", ".join(p.name for p in written))
     # If user requested an explicit output_dir different from cache dir, also write there

@@ -505,6 +505,7 @@ Implementation status
   **Technical Notes:** Use Gemini-2.5-flash for summaries
   **Dependencies:** GEMINI-015
   **Time:** 2 hours
+  **Status:** Done — Added `ytx/src/ytx/summarizer.py` (GeminiSummarizer) with retry helpers and API key loading.
 
 ### SUMMARY-002: Build Summary Prompt
 
@@ -516,6 +517,7 @@ Implementation status
   **Technical Notes:** Max 500 chars for TLDR
   **Dependencies:** SUMMARY-001
   **Time:** 3 hours
+  **Status:** Done — Structured prompt returns strict JSON: `{ tldr, bullets[] }` with length caps; plain-text fallback included.
 
 ### SUMMARY-003: Implement Transcript Summarization
 
@@ -527,6 +529,7 @@ Implementation status
   **Technical Notes:** Handle long transcripts
   **Dependencies:** SUMMARY-002
   **Time:** 3 hours
+  **Status:** Done — CLI `--summarize` computes overall summary, attaches to `TranscriptDoc.summary`, and writes `summary.json`.
 
 ### SUMMARY-004: Add Bullet Point Extraction
 
@@ -538,6 +541,7 @@ Implementation status
   **Technical Notes:** Each bullet < 100 chars
   **Dependencies:** SUMMARY-003
   **Time:** 3 hours
+  **Status:** Done — Summarizer produces 3–5 concise bullets (<=100 chars) alongside TL;DR.
 
 ### SUMMARY-005: Implement Smart Truncation
 
@@ -549,6 +553,7 @@ Implementation status
   **Technical Notes:** Max 100k tokens to Gemini
   **Dependencies:** SUMMARY-003
   **Time:** 3 hours
+  **Status:** Done — Hierarchical summarization with ~4000-char windows and overlap; summarizes chunk TL;DRs into final.
 
 ### SUMMARY-006: Add Language-Aware Summaries
 
@@ -560,6 +565,7 @@ Implementation status
   **Technical Notes:** Use detected language
   **Dependencies:** SUMMARY-003
   **Time:** 3 hours
+  **Status:** Done — Prompts respect detected transcript language for TL;DR and bullets.
 
 ### SUMMARY-007: Create Summary Cache
 
@@ -571,6 +577,7 @@ Implementation status
   **Technical Notes:** Include in config hash
   **Dependencies:** SUMMARY-003, CACHE-010
   **Time:** 2 hours
+  **Status:** Done — Added `summary.json` artifact with read/write helpers; CLI populates from cache on `--summarize`.
 
 ### SUMMARY-008: Wire Up Summary Pipeline
 
@@ -582,6 +589,7 @@ Implementation status
   **Technical Notes:** Optional feature
   **Dependencies:** SUMMARY-001 to SUMMARY-007
   **Time:** 3 hours
+  **Status:** Done — Added `--summarize` flag; integrates summaries into transcript JSON and exports.
 
 ---
 

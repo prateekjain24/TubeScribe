@@ -28,6 +28,7 @@ if TYPE_CHECKING:  # avoid runtime import cycles
 META_JSON: Final[str] = "meta.json"
 TRANSCRIPT_JSON: Final[str] = "transcript.json"
 CAPTIONS_SRT: Final[str] = "captions.srt"
+SUMMARY_JSON: Final[str] = "summary.json"
 
 
 def _xdg_cache_home() -> Path:
@@ -74,6 +75,7 @@ class ArtifactPaths:
     meta_json: Path
     transcript_json: Path
     captions_srt: Path
+    summary_json: Path
 
 
 def build_artifact_dir(
@@ -129,6 +131,7 @@ def build_artifact_paths(
         meta_json=d / META_JSON,
         transcript_json=d / TRANSCRIPT_JSON,
         captions_srt=d / CAPTIONS_SRT,
+        summary_json=d / SUMMARY_JSON,
     )
 
 
@@ -223,6 +226,28 @@ def read_meta(paths: ArtifactPaths) -> dict:
         return _loads_json(raw)
     except Exception as e:
         raise CacheCorruptedError(f"corrupted meta.json at {paths.meta_json}: {e}") from e
+
+
+def write_summary(paths: ArtifactPaths, payload: dict) -> Path:
+    """Write summary.json atomically."""
+    try:
+        import orjson as _orjson  # type: ignore
+
+        data = _orjson.dumps(payload, option=_orjson.OPT_SORT_KEYS)
+    except Exception:
+        data = _json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return write_bytes_atomic(paths.summary_json, data)
+
+
+def read_summary(paths: ArtifactPaths) -> dict | None:
+    try:
+        raw = _read_json_bytes(paths.summary_json)
+    except CacheError:
+        return None
+    try:
+        return _loads_json(raw)
+    except Exception:
+        return None
 
 
 # --- CACHE-005: Atomic Write Operations ---
@@ -481,6 +506,7 @@ __all__ = [
     "META_JSON",
     "TRANSCRIPT_JSON",
     "CAPTIONS_SRT",
+    "SUMMARY_JSON",
     "cache_root",
     "build_artifact_dir",
     "build_artifact_paths",
@@ -491,6 +517,8 @@ __all__ = [
     "CacheCorruptedError",
     "read_transcript_doc",
     "read_meta",
+    "read_summary",
+    "write_summary",
     "write_bytes_atomic",
     "build_meta_payload",
     "write_meta",
