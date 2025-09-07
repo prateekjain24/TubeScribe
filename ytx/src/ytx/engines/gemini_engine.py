@@ -16,6 +16,7 @@ from typing import Any, Callable
 import mimetypes
 from ..audio import probe_duration
 from ..chunking import compute_chunks, slice_wav_segment
+from ..stitch import stitch_segments
 import tempfile
 
 from .base import EngineError, TranscriptionEngine
@@ -223,6 +224,8 @@ class GeminiEngine(TranscriptionEngine):
                         on_progress(min(1.0, (idx + 1) / n))
                     except Exception:
                         pass
+        # Stitch across chunk overlaps to remove duplicates and ensure continuity
+        segments_out = stitch_segments(segments_out)
         return segments_out
 
     # --- Response parsing helpers (GEMINI-007) ---

@@ -258,6 +258,7 @@ Ticket notes
 **Technical Notes:** Compare overlap regions
 **Dependencies:** GEMINI-009
 **Time:** 4 hours
+**Status:** Done — Added `stitch_segments()` to merge duplicate/overlapping segments using text similarity and suffix/prefix de‑dup; trims overlaps to keep monotonic times.
 
 ### GEMINI-011: Add Rate Limit Handling
 **Acceptance Criteria:**
