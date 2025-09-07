@@ -98,6 +98,11 @@ def transcribe(
         help="Directory to write outputs (must exist)",
     ),
     overwrite: bool = typer.Option(False, "--overwrite", "-f", help="Ignore cache and reprocess"),
+    fallback: bool = typer.Option(
+        True,
+        "--fallback",
+        help="When using Gemini, fallback to Whisper on errors",
+    ),
 ) -> None:
     """Transcribe a YouTube video (stub)."""
     # CLI-008: Parameter validation
@@ -171,10 +176,27 @@ def transcribe(
         def on_prog(r: float) -> None:
             progress.update(task, completed=max(0.0, min(1.0, r)))
 
-        segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
+        used_cfg = cfg
+        used_engine_name = engine
+        engine_for_lang = eng
+        try:
+            segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
+        except Exception as e:
+            if engine == "gemini" and fallback:
+                console.print(f"[yellow]Gemini failed ({e}); falling back to Whisper[/]")
+                # Choose a reasonable Whisper model if the provided model is not a Whisper preset
+                whisper_presets = {"tiny","tiny.en","base","base.en","small","small.en","medium","medium.en","large-v1","large-v2","large-v3","large-v3-turbo"}
+                whisper_model = model if model in whisper_presets else "small"
+                used_cfg = load_config(engine="whisper", model=whisper_model)
+                used_engine_name = "whisper"
+                whisper_eng = WhisperEngine()
+                engine_for_lang = whisper_eng
+                segments = whisper_eng.transcribe(wav_path, config=used_cfg, on_progress=on_prog)
+            else:
+                raise
 
     # Optional language detection if not provided
-    language = cfg.language or eng.detect_language(wav_path, config=cfg)
+    language = used_cfg.language or engine_for_lang.detect_language(wav_path, config=used_cfg)
 
     # Stage 5: export
     doc = TranscriptDoc(
@@ -183,16 +205,18 @@ def transcribe(
         title=meta.title,
         duration=meta.duration,
         language=language,
-        engine=cfg.engine,
-        model=cfg.model,
+        engine=used_engine_name,
+        model=used_cfg.model,
         segments=segments,
     )
-    # Export into cache directory and write meta
-    written = export_all(doc, outdir, parse_formats("json,srt"))
-    write_meta(paths, build_meta_payload(video_id=meta.id, config=cfg, source=meta))
+    # Export into cache directory (based on the engine actually used) and write meta
+    final_paths = artifact_paths_for(video_id=meta.id, config=used_cfg, create=True)
+    outdir_final = final_paths.dir
+    written = export_all(doc, outdir_final, parse_formats("json,srt"))
+    write_meta(final_paths, build_meta_payload(video_id=meta.id, config=used_cfg, source=meta))
     console.print("[green]Done[/]: " + ", ".join(p.name for p in written))
     # If user requested an explicit output_dir different from cache dir, also write there
-    if output_dir and output_dir.resolve() != outdir.resolve():
+    if output_dir and output_dir.resolve() != outdir_final.resolve():
         copied = export_all(doc, output_dir, parse_formats("json,srt"))
         console.print("[dim]Also wrote[/]: " + ", ".join(p.name for p in copied))
 

@@ -296,6 +296,7 @@ Ticket notes
 **Technical Notes:** Configurable behavior
 **Dependencies:** GEMINI-006
 **Time:** 3 hours
+**Status:** Done — Added CLI flag `--fallback` (default on). On Gemini errors, logs reason and transparently falls back to Whisper, exporting under the Whisper cache path.
 
 ### GEMINI-015: Wire Up Gemini Pipeline
 **Acceptance Criteria:**
@@ -305,6 +306,7 @@ Ticket notes
 **Technical Notes:** Test with 5-min video
 **Dependencies:** GEMINI-001 to GEMINI-014
 **Time:** 3 hours
+**Status:** Done — CLI supports `--engine gemini` end-to-end (download → normalize → upload → transcribe → stitch → export). Fallback supported; outputs cached with meta.
 
 ---
 
