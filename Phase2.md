@@ -48,6 +48,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Handle corrupted cache
 **Dependencies:** CACHE-003
 **Time:** 3 hours
+**Status:** Done — Added `read_transcript_doc()` and `read_meta()` with typed errors.
 
 ### CACHE-005: Add Atomic Write Operations
 **Acceptance Criteria:**
@@ -57,6 +58,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use tempfile.NamedTemporaryFile
 **Dependencies:** CACHE-002
 **Time:** 3 hours
+**Status:** Done — Implemented `write_bytes_atomic()` and exporters already use atomic writes.
 
 ### CACHE-006: Create Cache Metadata
 **Acceptance Criteria:**
@@ -66,6 +68,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Track ytx version
 **Dependencies:** CACHE-005
 **Time:** 2 hours
+**Status:** Done — Added `build_meta_payload()` and `write_meta()` including created_at, ytx_version, and source.
 
 ### CACHE-007: Implement Cache List Command
 **Acceptance Criteria:**
@@ -75,6 +78,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Walk cache directory
 **Dependencies:** CACHE-001
 **Time:** 3 hours
+**Status:** Done — Added `ytx cache ls` using `scan_cache()` to show ID, engine/model, created date, size, and title.
 
 ### CACHE-008: Add Cache Clear Command
 **Acceptance Criteria:**
@@ -84,6 +88,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use shutil.rmtree carefully
 **Dependencies:** CACHE-007
 **Time:** 3 hours
+**Status:** Done — Added `ytx cache clear --yes [--video-id <id>]` backed by `clear_cache()` with size accounting.
 
 ### CACHE-009: Implement Cache Statistics
 **Acceptance Criteria:**
@@ -93,6 +98,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use os.stat for sizes
 **Dependencies:** CACHE-007
 **Time:** 2 hours
+**Status:** Done — Added `ytx cache stats` (entries, unique videos, total size) via `cache_statistics()`.
 
 ### CACHE-010: Add Cache Expiration
 **Acceptance Criteria:**
@@ -102,6 +108,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Default no expiration
 **Dependencies:** CACHE-006
 **Time:** 3 hours
+**Status:** Done — TTL via `YTX_CACHE_TTL_SECONDS`/`YTX_CACHE_TTL_DAYS`; startup runs `expire_cache(ttl)` when set.
 
 ---
 
