@@ -174,6 +174,52 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Time:** 4 hours
 **Status:** Done — Uploads audio, calls `generate_content([file, prompt])`, parses JSON segments or falls back to a single segment.
 
+---
+
+## Cross‑Provider Transcription Extensibility
+
+To support OpenAI, Deepgram, and ElevenLabs cleanly, we adopt a small set of abstractions and CLI/config patterns that generalize across providers with different capabilities.
+
+Architecture
+
+- Cloud base: shared template for cloud engines
+  - `setup_client(config)`: auth + client init
+  - `prepare_input(path)`: upload or inline payload
+  - `generate(payload)`: request with timeouts + retries
+  - `parse_response(raw)`: normalize to `TranscriptSegment[]` (monotonic, clamped)
+- Capabilities flags per engine
+  - `has_native_segments`, `has_word_timestamps`, `has_diarization`, `supports_streaming`, `max_file_bytes`
+  - Guides timestamp policy and error messaging
+- Chunking + stitching modules
+  - `fixed_window(seconds, overlap)` and `silence_based`
+  - Helper to offset chunk segments and stitch overlaps
+
+Config & CLI
+
+- `engine_options` bag in config (env `YTX_ENGINE_OPTS` JSON) included in `config_hash()`
+- Timestamp policy: `--timestamps {native,chunked,none}`
+  - `native`: use provider segments/utterances when available (e.g., Deepgram/OpenAI)
+  - `chunked`: force coarse timestamps via chunk offsets for text‑only providers (e.g., Gemini, ElevenLabs)
+  - `none`: single text segment
+- CLI: `--engine-opts '{"utterances":true,"diarize":true}'` forwarded to engines
+
+Provider grounding
+
+- OpenAI: Audio Transcriptions (multipart). Historically supports `response_format=verbose_json` with `segments` containing start/end seconds; treat as native when present, else fallback to chunked/none
+- Deepgram: Native word/utterance timestamps and optional diarization; prefer `utterances` → segments, with options in `engine_options`
+- ElevenLabs: Text‑first; timestamps/diarization availability varies; default to chunked or none
+- Gemini: Best‑effort JSON timestamps; not guaranteed forced alignment; prefer `chunked` mode for reliable coarse timings
+
+Cache & metadata
+
+- Extend `meta.json` with `provider`, `request_id` (if available), and later `cost`/rate limit info
+- Keep artifact layout unchanged; `engine_options` affects `config_hash()` for deterministic caching
+
+Ticket notes
+
+- Update GEMINI‑005/006/007 expectations: timestamps are best‑effort; engines must tolerate plain text and fallback to chunked or none according to policy
+- Add OpenAI/Deepgram/ElevenLabs engine tickets later mirroring GEMINI structure, reusing the cloud base, and honoring `engine_options` + `--timestamps`
+
 ### GEMINI-007: Add Response Parser
 **Acceptance Criteria:**
 - Parse Gemini JSON response
