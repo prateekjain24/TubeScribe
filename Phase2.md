@@ -848,3 +848,187 @@ Phase 2 is complete when:
 3. Documentation complete
 4. Performance targets met
 5. Ready for v1.0 release
+
+---
+
+## Future Sprint: Cloud Engines (OpenAI, Deepgram, ElevenLabs)
+
+### OPENAI-001: Create OpenAI Engine Module
+**Acceptance Criteria:**
+- Create `openai_engine.py` and register engine
+- Optional import of OpenAI client or HTTP fallback
+- Clear error on missing API key
+**Technical Notes:** Use `OPENAI_API_KEY` from environment
+**Dependencies:** Cloud base, chunking/stitching
+**Time:** 2 hours
+
+### OPENAI-002: Implement API Key Loading & Client Setup
+**Acceptance Criteria:**
+- Load API key from env
+- Initialize client with timeouts
+- Fail fast with friendly error if misconfigured
+**Technical Notes:** Allow HTTP fallback if SDK absent
+**Dependencies:** OPENAI-001
+**Time:** 2 hours
+
+### OPENAI-003: Setup Model Configuration
+**Acceptance Criteria:**
+- Choose default STT model (configurable via `model` or `engine_options`)
+- Validate model name
+- Map options from `engine_options`
+**Technical Notes:** Keep defaults provider-recommended; document overrides
+**Dependencies:** OPENAI-002
+**Time:** 2 hours
+
+### OPENAI-004: Prepare Input (Multipart Upload)
+**Acceptance Criteria:**
+- Send audio as multipart file
+- Handle size limits and timeouts
+- Route to chunked strategy when oversized
+**Technical Notes:** Reuse `compute_chunks` and `slice_wav_segment`
+**Dependencies:** OPENAI-003
+**Time:** 3 hours
+
+### OPENAI-005: Implement Basic Transcription
+**Acceptance Criteria:**
+- Call transcription endpoint with timeouts
+- Apply rate-limit retries via cloud base
+- Surface concise errors
+**Technical Notes:** Honor `timestamp_policy`
+**Dependencies:** OPENAI-004
+**Time:** 3 hours
+
+### OPENAI-006: Add Response Parser
+**Acceptance Criteria:**
+- Parse response into segments when provider returns structured timings (e.g., verbose JSON)
+- Fallback to single/chunked per `timestamp_policy`
+- Clamp monotonic times
+**Technical Notes:** Tolerate plain text responses
+**Dependencies:** OPENAI-005
+**Time:** 3 hours
+
+### OPENAI-007: Add Chunk Processing Loop
+**Acceptance Criteria:**
+- Process each chunk sequentially
+- Offset timestamps by chunk start
+- Stitch overlaps
+**Technical Notes:** Reuse `stitch_segments`
+**Dependencies:** OPENAI-006
+**Time:** 3 hours
+
+### OPENAI-008: Wire Up CLI & Metadata
+**Acceptance Criteria:**
+- Enable `--engine openai`
+- Support `--engine-opts` mapping
+- Write `meta.provider` and `request_id` (if available)
+**Technical Notes:** Respect cache key via `engine_options`
+**Dependencies:** OPENAI-007
+**Time:** 2 hours
+
+### DEEPGRAM-001: Create Deepgram Engine Module
+**Acceptance Criteria:**
+- Create `deepgram_engine.py` and register engine
+- Optional import of SDK or HTTP fallback
+- Clear error on missing API key
+**Technical Notes:** Use `DEEPGRAM_API_KEY` from environment
+**Dependencies:** Cloud base, chunking/stitching
+**Time:** 2 hours
+
+### DEEPGRAM-002: Implement Client & Options
+**Acceptance Criteria:**
+- Initialize client with timeouts
+- Map `engine_options` (e.g., model, smart_format, utterances, diarize)
+- Validate options
+**Technical Notes:** Document recommended defaults
+**Dependencies:** DEEPGRAM-001
+**Time:** 2 hours
+
+### DEEPGRAM-003: Implement Pre-recorded Transcription Call
+**Acceptance Criteria:**
+- Upload audio or send by URL
+- Add retries for rate limits
+- Handle size/length limits with chunk fallback
+**Technical Notes:** Honor `timestamp_policy`
+**Dependencies:** DEEPGRAM-002
+**Time:** 3 hours
+
+### DEEPGRAM-004: Add Response Parser
+**Acceptance Criteria:**
+- Prefer utterances for segments (start/end, text)
+- Fallback to word timings if utterances absent
+- Clamp and sanitize segments
+**Technical Notes:** Defer diarization to future tickets
+**Dependencies:** DEEPGRAM-003
+**Time:** 3 hours
+
+### DEEPGRAM-005: Add Chunk Processing Loop
+**Acceptance Criteria:**
+- Process chunks, offset times, stitch overlaps
+- Preserve order and continuity
+- Log per-chunk progress
+**Technical Notes:** Reuse shared utilities
+**Dependencies:** DEEPGRAM-004
+**Time:** 3 hours
+
+### DEEPGRAM-006: Wire Up CLI & Metadata
+**Acceptance Criteria:**
+- Enable `--engine deepgram`
+- Accept `--engine-opts` mapping
+- Write `meta.provider` and any request identifiers
+**Technical Notes:** Cache paths include engine options
+**Dependencies:** DEEPGRAM-005
+**Time:** 2 hours
+
+### ELEVEN-001: Create ElevenLabs Engine Module
+**Acceptance Criteria:**
+- Create `eleven_engine.py` and register engine
+- Optional import of SDK or HTTP fallback
+- Clear error on missing API key
+**Technical Notes:** Use `ELEVENLABS_API_KEY` from environment
+**Dependencies:** Cloud base, chunking/stitching
+**Time:** 2 hours
+
+### ELEVEN-002: Implement Client & Model Options
+**Acceptance Criteria:**
+- Initialize client with timeouts
+- Map `engine_options` to model/params
+- Validate model setting
+**Technical Notes:** Document limitations of timestamp support
+**Dependencies:** ELEVEN-001
+**Time:** 2 hours
+
+### ELEVEN-003: Implement Basic Transcription
+**Acceptance Criteria:**
+- Upload audio and get transcript
+- Apply retries for rate limits
+- Fallback to chunked/none per `timestamp_policy`
+**Technical Notes:** Timeouts and clear errors
+**Dependencies:** ELEVEN-002
+**Time:** 3 hours
+
+### ELEVEN-004: Add Response Parser
+**Acceptance Criteria:**
+- Parse transcript; if timestamps provided, convert to segments
+- Otherwise fallback to chunked or none
+- Ensure monotonic times
+**Technical Notes:** Tolerate partial/empty fields
+**Dependencies:** ELEVEN-003
+**Time:** 3 hours
+
+### ELEVEN-005: Add Chunk Processing Loop
+**Acceptance Criteria:**
+- Process chunks, offset times, stitch overlaps
+- Preserve order and continuity
+- Log progress
+**Technical Notes:** Reuse shared utilities
+**Dependencies:** ELEVEN-004
+**Time:** 3 hours
+
+### ELEVEN-006: Wire Up CLI & Metadata
+**Acceptance Criteria:**
+- Enable `--engine elevenlabs`
+- Accept `--engine-opts` mapping
+- Write `meta.provider` and identifiers (if any)
+**Technical Notes:** Cache separation via `engine_options`
+**Dependencies:** ELEVEN-005
+**Time:** 2 hours
