@@ -185,6 +185,7 @@ class VideoMetadata(ModelBase):
     url: NonEmptyStr
     uploader: str | None = None
     description: str | None = None
+    chapters: list[Chapter] | None = None
 
     @field_validator("duration", mode="before")
     @classmethod

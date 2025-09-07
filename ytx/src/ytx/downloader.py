@@ -14,6 +14,7 @@ from typing import Final, Any
 from rich.logging import RichHandler
 
 from .models import VideoMetadata
+from .chapters import parse_yt_dlp_chapters
 from .audio import ensure_ffmpeg
 from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
@@ -128,6 +129,13 @@ def _build_yt_dlp_cmd(
 
 
 def _parse_metadata(data: dict[str, Any], fallback_url: str) -> VideoMetadata:
+    # Extract duration for chapter end inference
+    duration = data.get("duration")
+    try:
+        vd = float(duration) if duration is not None else None
+    except Exception:
+        vd = None
+    chapters = parse_yt_dlp_chapters(data, video_duration=vd)
     return VideoMetadata(
         id=str(data.get("id") or ""),
         title=data.get("title"),
@@ -135,6 +143,7 @@ def _parse_metadata(data: dict[str, Any], fallback_url: str) -> VideoMetadata:
         url=str(data.get("webpage_url") or data.get("original_url") or fallback_url),
         uploader=data.get("uploader"),
         description=data.get("description"),
+        chapters=chapters or None,
     )
 
 

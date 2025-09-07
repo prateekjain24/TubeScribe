@@ -328,6 +328,7 @@ Implementation status
 **Technical Notes:** Handle videos without chapters
 **Dependencies:** Phase 1 complete
 **Time:** 2 hours
+**Status:** Done — Added `ytx/src/ytx/chapters.py` with robust parsing helpers and graceful handling when absent.
 
 ### CHAPTER-002: Extract Chapter Metadata
 **Acceptance Criteria:**
@@ -337,6 +338,7 @@ Implementation status
 **Technical Notes:** Some videos have auto-chapters
 **Dependencies:** CHAPTER-001
 **Time:** 3 hours
+**Status:** Done — `downloader._parse_metadata` now parses `chapters` using yt-dlp fields (`start_time`, `end_time`, `title`) and infers missing ends from next start or duration; `VideoMetadata` includes optional `chapters`.
 
 ### CHAPTER-003: Implement Audio Slicing
 **Acceptance Criteria:**
