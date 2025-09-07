@@ -836,6 +836,7 @@ Implementation status
   **Technical Notes:** Use docstrings
   **Dependencies:** None
 **Time:** 3 hours
+**Status:** Done — Added `docs/API.md` with CLI overview, module references, models, and extension points.
 **Status:** Pending — To add module overview and documented CLI/API usage.
 
 ### TEST-011: Add Configuration Guide
@@ -848,6 +849,7 @@ Implementation status
   **Technical Notes:** Include defaults
   **Dependencies:** TEST-009
 **Time:** 2 hours
+**Status:** Done — Added `docs/CONFIG.md` covering env vars (YTX_*), CLI options, and `config_hash()` reproducibility.
 **Status:** Pending — To document environment variables and config hashing.
 
 ### TEST-012: Create Release Checklist
@@ -860,6 +862,7 @@ Implementation status
   **Technical Notes:** Include in README
   **Dependencies:** TEST-009
 **Time:** 2 hours
+**Status:** Done — Added `docs/RELEASE.md` with pre‑release, build/smoke test, tag/release, and post‑release steps.
 **Status:** Pending — To add versioning, changelog, and release QA checklist.
 
 ---
