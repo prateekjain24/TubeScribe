@@ -65,7 +65,11 @@ def hello(name: str = "world") -> None:
 @app.command()
 def transcribe(
     url: str = typer.Argument(..., help="YouTube URL to transcribe"),
-    engine: str = typer.Option("whisper", "--engine", help="Transcription engine (whisper)"),
+    engine: str = typer.Option(
+        "whisper",
+        "--engine",
+        help="Transcription engine (whisper|whispercpp)",
+    ),
     model: str = typer.Option("small", "--model", help="Model name for the selected engine"),
     output_dir: Path | None = typer.Option(
         None,
@@ -81,7 +85,7 @@ def transcribe(
     vid = extract_video_id(url)
     if not vid:
         raise typer.BadParameter("Invalid YouTube URL or video ID", param_hint=["url"])
-    allowed_engines = {"whisper"}
+    allowed_engines = {"whisper", "whispercpp"}
     if engine not in allowed_engines:
         raise typer.BadParameter("Unsupported engine (supported: whisper)", param_hint=["engine"])
     if output_dir is not None and not output_dir.exists():
@@ -103,7 +107,19 @@ def transcribe(
         wav_path = normalize_wav(audio_path, outdir / f"{meta.id}.wav")
 
     # Stage 4: transcribe (progress bar)
-    eng = WhisperEngine()
+    # Choose engine (prefer whispercpp for Metal if requested)
+    if engine == "whispercpp" or (engine == "whisper" and cfg.device == "metal"):
+        try:
+            from .engines.whispercpp_engine import WhisperCppEngine
+
+            eng = WhisperCppEngine()
+        except Exception as e:
+            console.print(
+                "[yellow]whisper.cpp not available; falling back to faster-whisper CPU[/]"
+            )
+            eng = WhisperEngine()
+    else:
+        eng = WhisperEngine()
     from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn
 
     console.print(f"[bold]Transcribing[/]: {meta.title or meta.id} ({cfg.model})")

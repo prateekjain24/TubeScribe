@@ -25,7 +25,7 @@ except Exception:  # pragma: no cover
         return _json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
-Engine = Literal["whisper", "gemini"]
+Engine = Literal["whisper", "whispercpp", "gemini"]
 Device = Literal["cpu", "auto", "cuda", "metal"]
 ComputeType = Literal["auto", "int8", "int8_float16", "float16", "float32"]
 
@@ -38,6 +38,11 @@ class AppConfig(BaseSettings):
     language: str | None = Field(default=None, description="Target language or auto")
     device: Device = Field(default="cpu", description="Compute device")
     compute_type: ComputeType = Field(default="int8", description="Numerical precision for local models")
+
+    # whisper.cpp (Metal) settings
+    whispercpp_bin: str = Field(default="main", description="Path or name of whisper.cpp binary (main)")
+    whispercpp_ngl: int = Field(default=35, description="Number of layers to offload to GPU (Metal)")
+    whispercpp_threads: int | None = Field(default=None, description="Threads for whisper.cpp; defaults to CPU count")
 
     # Later we can add cache/output dirs, concurrency, and API keys.
 
@@ -57,6 +62,13 @@ class AppConfig(BaseSettings):
             "device": self.device,
             "compute_type": self.compute_type,
         }
+        # Engine-specific knobs that impact output determinism
+        if self.engine == "whispercpp":
+            data.update({
+                "wc_bin": self.whispercpp_bin,
+                "wc_ngl": self.whispercpp_ngl,
+                "wc_threads": self.whispercpp_threads or 0,
+            })
         return {k: v for k, v in data.items() if v is not None}
 
     def config_hash(self) -> str:

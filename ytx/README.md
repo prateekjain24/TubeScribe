@@ -31,6 +31,15 @@ Notes:
 - Do not commit cookies to the repo. `.env` is ignored.
 - Region restrictions may still apply even with cookies.
 
+### Apple Silicon (Metal) acceleration
+- faster-whisper (CTranslate2) does not support Metal directly. For GPU acceleration on M‑series, use whisper.cpp:
+  1) Build whisper.cpp with Metal: `make -j METAL=1`
+  2) Download a GGUF model (e.g., `gguf-large-v3-turbo.bin`)
+  3) Run with engine `whispercpp` or set device=`metal` with engine=`whisper` to auto-prefer whisper.cpp
+     - Example: `uv run ytx transcribe <url> --engine whispercpp --model /path/to/gguf-large-v3-turbo.bin`
+  4) Optional: set env `YTX_WHISPERCPP_BIN` for the binary path and `YTX_WHISPERCPP_MODEL_PATH` for the model file.
+  5) Tuning: `YTX_WHISPERCPP_NGL` (layers on GPU, default 35), `YTX_WHISPERCPP_THREADS` (CPU threads).
+
 ### Environment (optional)
 - Copy `.env.example` to `.env` and set variables as needed (e.g., `GEMINI_API_KEY`).
 
