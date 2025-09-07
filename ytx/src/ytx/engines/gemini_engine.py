@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, Callable
 import mimetypes
 from ..audio import probe_duration
+from ..chunking import compute_chunks, slice_wav_segment
+import tempfile
 
 from .base import EngineError, TranscriptionEngine
 from ..config import AppConfig
@@ -133,8 +135,25 @@ class GeminiEngine(TranscriptionEngine):
         config: AppConfig,
         on_progress: Callable[[float], None] | None = None,
     ) -> list[TranscriptSegment]:
+        # Decide chunking: if audio longer than window, process in chunks
+        try:
+            duration = probe_duration(audio_path)
+        except Exception:
+            duration = 0.0
+        window = 600.0  # 10 minutes
+        overlap = 2.0
+        if duration > window:
+            return self._transcribe_chunked(audio_path, config=config, on_progress=on_progress, window_seconds=window, overlap_seconds=overlap)
+        return self._transcribe_single(audio_path, config=config, on_progress=on_progress)
+
+    def _transcribe_single(
+        self,
+        audio_path: Path,
+        *,
+        config: AppConfig,
+        on_progress: Callable[[float], None] | None = None,
+    ) -> list[TranscriptSegment]:
         model = self._get_model(config)
-        # Upload audio first
         file = self._upload_audio(Path(audio_path))
         prompt = self._build_prompt(language=config.language)
         if on_progress:
@@ -143,15 +162,11 @@ class GeminiEngine(TranscriptionEngine):
             except Exception:
                 pass
         try:
-            # Content order: file then instruction text
             resp = model.generate_content([file, prompt], request_options={"timeout": 600})  # type: ignore[attr-defined]
         except Exception as e:  # pragma: no cover
             raise EngineError(f"Gemini generate_content failed: {e}") from e
-
         payload_text = self._extract_text_from_response(resp)
         data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
-
-        # Calculate duration for fallback bounds
         try:
             dur = probe_duration(audio_path)
         except Exception:
@@ -163,6 +178,52 @@ class GeminiEngine(TranscriptionEngine):
             except Exception:
                 pass
         return segments
+
+    def _transcribe_chunked(
+        self,
+        audio_path: Path,
+        *,
+        config: AppConfig,
+        on_progress: Callable[[float], None] | None = None,
+        window_seconds: float = 600.0,
+        overlap_seconds: float = 2.0,
+    ) -> list[TranscriptSegment]:
+        try:
+            total_dur = probe_duration(audio_path)
+        except Exception:
+            total_dur = 0.0
+        ranges = compute_chunks(total_dur, window_seconds=window_seconds, overlap_seconds=overlap_seconds)
+        if not ranges:
+            return self._transcribe_single(audio_path, config=config, on_progress=on_progress)
+        model = self._get_model(config)
+        prompt = self._build_prompt(language=config.language)
+        segments_out: list[TranscriptSegment] = []
+        with tempfile.TemporaryDirectory(prefix="ytx-chunks-") as td:
+            tdir = Path(td)
+            n = len(ranges)
+            for idx, (start, end) in enumerate(ranges):
+                chunk_path = tdir / f"chunk_{idx:04d}.wav"
+                slice_wav_segment(audio_path, chunk_path, start=start, end=end)
+                try:
+                    file = self._upload_audio(chunk_path)
+                    resp = model.generate_content([file, prompt], request_options={"timeout": 600})  # type: ignore[attr-defined]
+                except Exception as e:  # pragma: no cover
+                    raise EngineError(f"Gemini chunk {idx} failed: {e}") from e
+                payload_text = self._extract_text_from_response(resp)
+                data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
+                segs = self._parse_segments_from_data_or_text(data, payload_text, total_duration=(end - start))
+                # Offset by chunk start
+                for s in segs:
+                    s.start = float(start) + float(s.start)
+                    s.end = float(start) + float(s.end)
+                    s.id = len(segments_out)
+                    segments_out.append(s)
+                if on_progress:
+                    try:
+                        on_progress(min(1.0, (idx + 1) / n))
+                    except Exception:
+                        pass
+        return segments_out
 
     # --- Response parsing helpers (GEMINI-007) ---
 

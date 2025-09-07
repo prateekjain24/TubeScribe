@@ -238,6 +238,7 @@ Ticket notes
 **Technical Notes:** Use ffmpeg for splitting
 **Dependencies:** GEMINI-006
 **Time:** 4 hours
+**Status:** Done — Added `chunking.py` with `compute_chunks()` and `slice_wav_segment()` using ffmpeg; defaults 10m windows with 2s overlap.
 
 ### GEMINI-009: Add Chunk Processing Loop
 **Acceptance Criteria:**
@@ -247,6 +248,7 @@ Ticket notes
 **Technical Notes:** Maintain order
 **Dependencies:** GEMINI-008
 **Time:** 3 hours
+**Status:** Done — Gemini engine processes chunks sequentially, offsets segment times by chunk start, and concatenates in order. Overlap de-dup is planned in GEMINI-010.
 
 ### GEMINI-010: Implement Segment Stitching
 **Acceptance Criteria:**
