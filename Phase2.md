@@ -962,6 +962,7 @@ Implementation status
   **Technical Notes:** Full system test
   **Dependencies:** All previous
   **Time:** 4 hours
+  **Status:** Done — Added `scripts/integration_e2e.sh` to run a real‑env long‑video test, including a health check and cache artifact validation.
 
 ---
 
