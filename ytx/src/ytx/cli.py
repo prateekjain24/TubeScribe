@@ -130,6 +130,11 @@ def transcribe(
         help="Process chapters concurrently when using --by-chapter",
     ),
     chapter_overlap: float = typer.Option(2.0, "--chapter-overlap", help="Seconds of overlap between chapter slices"),
+    summarize_chapters: bool = typer.Option(
+        False,
+        "--summarize-chapters/--no-summarize-chapters",
+        help="Generate a short summary per chapter (uses Gemini)",
+    ),
 ) -> None:
     """Transcribe a YouTube video (stub)."""
     # CLI-008: Parameter validation
@@ -227,6 +232,7 @@ def transcribe(
         used_engine_name = engine
         engine_for_lang = eng
         segments = []
+        chapter_results: list[tuple[int, any, list]] | None = None
         try:
             if by_chapter and (meta.chapters or []):
                 # Chapter-aware processing path
@@ -269,6 +275,7 @@ def transcribe(
                         progress.update(task, completed=max(0.0, min(1.0, completed / n)))
                 # Sort, offset, and stitch
                 results.sort(key=lambda t: t[0])
+                chapter_results = results
                 segments = stitch_chapter_segments(offset_chapter_segments(results))
                 # Mark overall complete
                 progress.update(task, completed=1.0)
@@ -310,6 +317,7 @@ def transcribe(
                             results.append((i, ch, segs))
                             completed += 1
                     results.sort(key=lambda t: t[0])
+                    chapter_results = results
                     segments = stitch_chapter_segments(offset_chapter_segments(results))
                 else:
                     segments = whisper_eng.transcribe(wav_path, config=used_cfg, on_progress=on_prog)
@@ -318,6 +326,28 @@ def transcribe(
 
     # Optional language detection if not provided
     language = used_cfg.language or engine_for_lang.detect_language(wav_path, config=used_cfg)
+
+    # Optional per-chapter summaries
+    chapters_for_doc = meta.chapters
+    if summarize_chapters and (meta.chapters or []):
+        try:
+            from .summarizer import GeminiSummarizer
+
+            summarizer = GeminiSummarizer()
+            chapters_for_doc = []
+            if by_chapter and chapter_results is not None:
+                for i, ch, segs in chapter_results:
+                    text = " ".join(s.text for s in segs if s.text).strip()
+                    summ = summarizer.summarize(text, language=language, max_chars=500) if text else ""
+                    chapters_for_doc.append(type(ch)(title=ch.title, start=ch.start, end=ch.end, summary=summ))
+            else:
+                # Derive text per chapter from global segments
+                for ch in meta.chapters or []:
+                    text = " ".join(s.text for s in segments if s.start >= ch.start and s.end <= ch.end).strip()
+                    summ = summarizer.summarize(text, language=language, max_chars=500) if text else ""
+                    chapters_for_doc.append(type(ch)(title=ch.title, start=ch.start, end=ch.end, summary=summ))
+        except Exception as e:
+            console.print(f"[yellow]Chapter summaries unavailable: {e}[/]")
 
     # Stage 5: export
     doc = TranscriptDoc(
@@ -329,7 +359,7 @@ def transcribe(
         engine=used_engine_name,
         model=used_cfg.model,
         segments=segments,
-        chapters=meta.chapters,
+        chapters=chapters_for_doc,
     )
     # Export into cache directory (based on the engine actually used) and write meta
     final_paths = artifact_paths_for(video_id=meta.id, config=used_cfg, create=True)
