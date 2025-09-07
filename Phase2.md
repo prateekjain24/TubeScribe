@@ -688,7 +688,8 @@ Implementation status
 - Sanitize sensitive data
   **Technical Notes:** Remove API keys
   **Dependencies:** ERROR-001
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — Added sanitized error reports (`errors.write_error_report`) with timestamp, traceback, platform info, and redacted env; CLI writes reports on failures/interrupts.
 
 ### ERROR-009: Add Interrupt Handling
 
@@ -699,7 +700,8 @@ Implementation status
 - Save progress if possible
   **Technical Notes:** Use signal handlers
   **Dependencies:** ERROR-005
-  **Time:** 3 hours
+**Time:** 3 hours
+**Status:** Done — KeyboardInterrupt handling writes an error report; by-chapter path saves partial results when available; temp files are cleaned via context managers.
 
 ### ERROR-010: Implement Health Checks
 
@@ -710,7 +712,8 @@ Implementation status
 - Test network connectivity
   **Technical Notes:** Run before main operation
   **Dependencies:** ERROR-001
-  **Time:** 2 hours
+**Time:** 2 hours
+**Status:** Done — Added `ytx health` command: checks ffmpeg availability, Gemini API key presence, and basic network connectivity.
 
 ---
 

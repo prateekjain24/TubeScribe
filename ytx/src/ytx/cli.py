@@ -30,6 +30,7 @@ from .chapters import (
     offset_chapter_segments,
     stitch_chapter_segments,
 )
+from .errors import write_error_report
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -220,17 +221,22 @@ def transcribe(
     paths = artifact_paths_for(video_id=vid, config=cfg, create=True)
     outdir = paths.dir  # write primary outputs into the cache directory
 
-    # Stage 1: metadata
-    with console.status("[bold blue]Fetching metadata…", spinner="dots"):
-        meta = fetch_metadata(url, timeout=cfg.network_timeout)
+    try:
+        # Stage 1: metadata
+        with console.status("[bold blue]Fetching metadata…", spinner="dots"):
+            meta = fetch_metadata(url, timeout=cfg.network_timeout)
 
-    # Stage 2: download audio
-    with console.status("[bold green]Downloading audio…", spinner="dots"):
-        audio_path = download_audio(meta, outdir, timeout=cfg.download_timeout)
+        # Stage 2: download audio
+        with console.status("[bold green]Downloading audio…", spinner="dots"):
+            audio_path = download_audio(meta, outdir, timeout=cfg.download_timeout)
 
-    # Stage 3: normalize to WAV
-    with console.status("[bold green]Normalizing audio…", spinner="dots"):
-        wav_path = normalize_wav(audio_path, outdir / f"{meta.id}.wav")
+        # Stage 3: normalize to WAV
+        with console.status("[bold green]Normalizing audio…", spinner="dots"):
+            wav_path = normalize_wav(audio_path, outdir / f"{meta.id}.wav")
+    except KeyboardInterrupt:
+        report = write_error_report(paths.dir if 'paths' in locals() else Path.cwd(), InterruptError().with_traceback(None) if False else KeyboardInterrupt(), context={"stage": "init", "url": url})
+        console.print(f"[yellow]Aborted by user. Error report: {report}[/]")
+        raise typer.Exit(code=130)
 
     # Stage 4: transcribe (progress bar)
     # Choose engine (prefer whispercpp for Metal if requested)
@@ -357,8 +363,8 @@ def transcribe(
                     segments = whisper_eng.transcribe(wav_path, config=used_cfg, on_progress=on_prog)
             else:
                 # Recovery strategy: write partial results if available and by-chapter was used
-                if by_chapter and chapter_results:
-                    try:
+                try:
+                    if by_chapter and chapter_results:
                         partial_segments = stitch_chapter_segments(offset_chapter_segments(chapter_results))
                         partial_doc = TranscriptDoc(
                             video_id=vid,
@@ -371,13 +377,13 @@ def transcribe(
                             segments=partial_segments,
                             chapters=meta.chapters,
                         )
-                        # Write a partial JSON next to intended cache dir
                         from .exporters.manager import export_all, parse_formats
                         export_all(partial_doc, paths.dir, parse_formats("json"))
                         console.print("[yellow]Wrote partial transcript due to failure[/]")
-                    except Exception:
-                        pass
-                raise
+                finally:
+                    report = write_error_report(paths.dir if 'paths' in locals() else Path.cwd(), e, context={"command": "transcribe", "video_id": vid})
+                    console.print(f"[red]Error report written:[/] {report}")
+                    raise
 
     # Optional language detection if not provided
     language = used_cfg.language or engine_for_lang.detect_language(wav_path, config=used_cfg)
@@ -532,36 +538,45 @@ def summarize_file(
             doc = _TD.model_validate(payload)
         except Exception as e:
             raise typer.BadParameter(f"Invalid TranscriptDoc JSON: {e}")
-    from .summarizer import GeminiSummarizer
-    summarizer = GeminiSummarizer()
-    txt = "\n".join(s.text for s in doc.segments if s.text).strip()
-    if not txt:
-        console.print("[yellow]No text content to summarize[/]")
-        raise typer.Exit(code=1)
-    lang = language or doc.language
-    console.print("[bold]Summarizing transcript…[/]")
-    res = summarizer.summarize_long(txt, language=lang, bullets=5, max_tldr=500)
-    from .models import Summary as _Summary
+    try:
+        from .summarizer import GeminiSummarizer
+        summarizer = GeminiSummarizer()
+        txt = "\n".join(s.text for s in doc.segments if s.text).strip()
+        if not txt:
+            console.print("[yellow]No text content to summarize[/]")
+            raise typer.Exit(code=1)
+        lang = language or doc.language
+        console.print("[bold]Summarizing transcript…[/]")
+        res = summarizer.summarize_long(txt, language=lang, bullets=5, max_tldr=500)
+        from .models import Summary as _Summary
 
-    summ = _Summary(tldr=res.get("tldr", ""), bullets=list(res.get("bullets", [])))
-    console.print("\n[bold]TL;DR[/]:\n" + summ.tldr)
-    if summ.bullets:
-        console.print("\n[bold]Key Points[/]:")
-        for b in summ.bullets:
-            console.print(f"- {b}")
-    if write:
-        out = path.with_suffix(".summary.json")
-        try:
-            from .cache import write_bytes_atomic
-            import orjson as _orjson  # type: ignore
+        summ = _Summary(tldr=res.get("tldr", ""), bullets=list(res.get("bullets", [])))
+        console.print("\n[bold]TL;DR[/]:\n" + summ.tldr)
+        if summ.bullets:
+            console.print("\n[bold]Key Points[/]:")
+            for b in summ.bullets:
+                console.print(f"- {b}")
+        if write:
+            out = path.with_suffix(".summary.json")
+            try:
+                from .cache import write_bytes_atomic
+                import orjson as _orjson  # type: ignore
 
-            data = _orjson.dumps(summ.model_dump(), option=_orjson.OPT_SORT_KEYS)
-        except Exception:
-            import json as _json
+                data = _orjson.dumps(summ.model_dump(), option=_orjson.OPT_SORT_KEYS)
+            except Exception:
+                import json as _json
 
-            data = _json.dumps(summ.model_dump(), sort_keys=True, indent=2).encode("utf-8")
-        write_bytes_atomic(out, data)
-        console.print(f"\n[green]Wrote summary[/]: {out}")
+                data = _json.dumps(summ.model_dump(), sort_keys=True, indent=2).encode("utf-8")
+            write_bytes_atomic(out, data)
+            console.print(f"\n[green]Wrote summary[/]: {out}")
+    except KeyboardInterrupt:
+        report = write_error_report(path.parent, KeyboardInterrupt(), context={"command": "summarize-file", "file": str(path)})
+        console.print(f"[yellow]Aborted by user. Error report: {report}[/]")
+        raise typer.Exit(code=130)
+    except Exception as e:
+        report = write_error_report(path.parent, e, context={"command": "summarize-file", "file": str(path)})
+        console.print(f"[red]Error report written:[/] {report}")
+        raise
 
 if __name__ == "__main__":
     try:
@@ -577,3 +592,43 @@ if __name__ == "__main__":
             raise SystemExit(1)
         except Exception:
             raise
+# Health checks
+@app.command("health")
+def health() -> None:
+    """Run basic health checks: ffmpeg, API keys, and network."""
+    from rich.table import Table
+    from .audio import ensure_ffmpeg
+    import os
+    import httpx
+
+    checks: list[tuple[str, str]] = []
+
+    # FFmpeg
+    try:
+        ensure_ffmpeg()
+        checks.append(("ffmpeg", "ok"))
+    except Exception as e:
+        checks.append(("ffmpeg", f"missing: {e}"))
+
+    # Gemini API key
+    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if key:
+        checks.append(("gemini_api_key", "present"))
+    else:
+        checks.append(("gemini_api_key", "absent"))
+
+    # Network
+    try:
+        with httpx.Client(timeout=5.0, follow_redirects=True) as client:
+            r = client.get("https://www.google.com", headers={"User-Agent": "ytx-health/1.0"})
+            ok = r.status_code < 500
+        checks.append(("network", "ok" if ok else f"status {r.status_code}"))
+    except Exception as e:
+        checks.append(("network", f"error: {e}"))
+
+    table = Table(title="ytx health")
+    table.add_column("Check")
+    table.add_column("Status")
+    for k, v in checks:
+        table.add_row(k, v)
+    console.print(table)
