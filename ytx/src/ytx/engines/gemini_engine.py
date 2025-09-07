@@ -147,66 +147,175 @@ class GeminiEngine(TranscriptionEngine):
             resp = model.generate_content([file, prompt], request_options={"timeout": 600})  # type: ignore[attr-defined]
         except Exception as e:  # pragma: no cover
             raise EngineError(f"Gemini generate_content failed: {e}") from e
-        # Try to parse strict JSON per prompt
-        payload_text = None
-        try:
-            payload_text = getattr(resp, "text", None)
-            if not payload_text:
-                cands = getattr(resp, "candidates", None)
-                if cands and len(cands) and getattr(cands[0], "content", None):
-                    parts = getattr(cands[0].content, "parts", None)
-                    if parts:
-                        payload_text = "".join(getattr(p, "text", "") for p in parts if getattr(p, "text", ""))
-        except Exception:
-            payload_text = None
-        try:
-            import orjson as _orjson  # type: ignore
 
-            data = _orjson.loads((payload_text or "").encode("utf-8")) if payload_text else None
-        except Exception:
-            import json as _json
+        payload_text = self._extract_text_from_response(resp)
+        data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
 
-            data = None
-            if payload_text:
-                try:
-                    data = _json.loads(payload_text)
-                except Exception:
-                    data = None
         # Calculate duration for fallback bounds
         try:
             dur = probe_duration(audio_path)
         except Exception:
             dur = 0.0
-        segments: list[TranscriptSegment] = []
-        if isinstance(data, dict) and isinstance(data.get("segments"), list):
-            prev_end = 0.0
-            for i, seg in enumerate(data["segments"]):
-                try:
-                    txt = str(seg.get("text") or "").strip()
-                    if not txt:
-                        continue
-                    start = float(seg.get("start") if seg.get("start") is not None else prev_end)
-                    end = float(seg.get("end") if seg.get("end") is not None else start)
-                    if start < prev_end:
-                        start = prev_end
-                    if end <= start:
-                        end = start + 0.001
-                    prev_end = end
-                    segments.append(TranscriptSegment(id=len(segments), start=start, end=end, text=txt))
-                except Exception:
-                    continue
-        if not segments:
-            # Fallback: treat entire response text as one segment if any text present
-            text_fallback = (payload_text or "").strip()
-            if not text_fallback:
-                raise EngineError("Gemini returned no usable content for transcription")
-            segments = [TranscriptSegment(id=0, start=0.0, end=max(0.001, float(dur)), text=text_fallback)]
+        segments = self._parse_segments_from_data_or_text(data, payload_text, total_duration=dur)
         if on_progress:
             try:
                 on_progress(1.0)
             except Exception:
                 pass
         return segments
+
+    # --- Response parsing helpers (GEMINI-007) ---
+
+    def _extract_text_from_response(self, resp) -> str | None:  # type: ignore[no-untyped-def]
+        try:
+            t = getattr(resp, "text", None)
+            if t:
+                return str(t)
+            cands = getattr(resp, "candidates", None)
+            if cands and len(cands) and getattr(cands[0], "content", None):
+                parts = getattr(cands[0].content, "parts", None)
+                if parts:
+                    txt = "".join(str(getattr(p, "text", "")) for p in parts if getattr(p, "text", ""))
+                    return txt or None
+        except Exception:
+            return None
+        return None
+
+    def _strip_code_fences(self, s: str) -> str:
+        t = s.strip()
+        if t.startswith("```"):
+            # remove first line fence
+            lines = t.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            # remove trailing fence if present
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            return "\n".join(lines).strip()
+        return s
+
+    def _loads_json_loose(self, s: str):  # type: ignore[no-untyped-def]
+        if not s:
+            return None
+        try:
+            import orjson as _orjson  # type: ignore
+
+            return _orjson.loads(s)
+        except Exception:
+            pass
+        import json as _json
+
+        try:
+            return _json.loads(s)
+        except Exception:
+            return None
+
+    def _parse_time_seconds(self, v) -> float | None:  # type: ignore[no-untyped-def]
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            s = v.strip()
+            # numeric string
+            try:
+                return float(s)
+            except Exception:
+                pass
+            # HH:MM:SS(.mmm) or MM:SS(.mmm)
+            parts = s.split(":")
+            try:
+                parts = [float(p) for p in parts]
+            except Exception:
+                return None
+            if len(parts) == 3:
+                h, m, sec = parts
+            elif len(parts) == 2:
+                h, m, sec = 0.0, parts[0], parts[1]
+            else:
+                return None
+            return max(0.0, float(h) * 3600.0 + float(m) * 60.0 + float(sec))
+        return None
+
+    def _parse_segments_from_data_or_text(
+        self,
+        data: Any,
+        text: str | None,
+        *,
+        total_duration: float = 0.0,
+    ) -> list[TranscriptSegment]:
+        # Accept either dict with "segments" or a list directly
+        seg_list = None
+        if isinstance(data, dict):
+            for key in ("segments", "utterances", "items", "chunks"):
+                val = data.get(key)
+                if isinstance(val, list):
+                    seg_list = val
+                    break
+        elif isinstance(data, list):
+            seg_list = data
+
+        results: list[TranscriptSegment] = []
+        prev_end = 0.0
+        if isinstance(seg_list, list):
+            for entry in seg_list:
+                if not isinstance(entry, dict):
+                    # Sometimes entries may be strings
+                    if isinstance(entry, str):
+                        txt = entry.strip()
+                        if txt:
+                            start = prev_end
+                            end = start + 0.001
+                            results.append(TranscriptSegment(id=len(results), start=start, end=end, text=txt))
+                            prev_end = end
+                    continue
+                # Accept multiple possible key names
+                txt = (
+                    str(
+                        entry.get("text")
+                        or entry.get("content")
+                        or entry.get("transcript")
+                        or entry.get("utterance")
+                        or ""
+                    )
+                ).strip()
+                if not txt:
+                    continue
+                start = self._parse_time_seconds(
+                    entry.get("start")
+                    or entry.get("start_time")
+                    or entry.get("startTime")
+                    or entry.get("start_sec")
+                )
+                end = self._parse_time_seconds(
+                    entry.get("end")
+                    or entry.get("end_time")
+                    or entry.get("endTime")
+                    or entry.get("end_sec")
+                )
+                if start is None:
+                    start = prev_end
+                if end is None:
+                    end = start
+                # Monotonic + minimal duration
+                if start < prev_end:
+                    start = prev_end
+                if end <= start:
+                    end = start + 0.001
+                results.append(TranscriptSegment(id=len(results), start=float(start), end=float(end), text=txt))
+                prev_end = float(end)
+
+        if not results:
+            # Fallback: treat entire response text as one segment if any text present
+            text_fallback = (text or "").strip()
+            if not text_fallback:
+                raise EngineError("Gemini returned no usable content for transcription")
+            results = [
+                TranscriptSegment(
+                    id=0, start=0.0, end=max(0.001, float(total_duration)), text=text_fallback
+                )
+            ]
+        return results
 
     def detect_language(self, audio_path: Path, *, config: AppConfig) -> str | None:
         # Not yet implemented; may be inferred during transcription prompt later.

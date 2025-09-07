@@ -228,6 +228,7 @@ Ticket notes
 **Technical Notes:** Use try/except for parsing
 **Dependencies:** GEMINI-006
 **Time:** 3 hours
+**Status:** Done — Added robust parser: strips code fences, tolerates alt keys (startTime/endTime), HH:MM:SS or numeric times, clamps monotonicity, and falls back to single segment if needed.
 
 ### GEMINI-008: Implement Audio Chunking
 **Acceptance Criteria:**
