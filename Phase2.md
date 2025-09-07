@@ -348,6 +348,7 @@ Implementation status
 **Technical Notes:** Use ffmpeg -ss and -t
 **Dependencies:** CHAPTER-002
 **Time:** 3 hours
+**Status:** Done — Implemented `slice_audio_by_chapters()` with 2s overlap default, writing 16kHz mono WAV per chapter via ffmpeg.
 
 ### CHAPTER-004: Add Chapter Processing Loop
 **Acceptance Criteria:**
@@ -357,6 +358,7 @@ Implementation status
 **Technical Notes:** Maintain chapter order
 **Dependencies:** CHAPTER-003
 **Time:** 3 hours
+**Status:** Done — Added `process_chapters()` to transcribe each chapter sequentially with progress and maintain order; offsets are handled in CHAPTER-005.
 
 ### CHAPTER-005: Implement Segment Offset Adjustment
 **Acceptance Criteria:**

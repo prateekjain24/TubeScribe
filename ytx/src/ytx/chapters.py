@@ -6,8 +6,15 @@ Provides helpers to parse chapter metadata emitted by yt-dlp's --dump-json
 output into our Chapter model. Handles videos without chapters gracefully.
 """
 
-from typing import Any, List
+from typing import Any, List, Callable, Tuple
 from dataclasses import dataclass
+from pathlib import Path
+import tempfile
+
+from .chunking import slice_wav_segment
+from .models import TranscriptSegment
+from .config import AppConfig
+from .engines.base import TranscriptionEngine
 
 from .models import Chapter
 
@@ -88,5 +95,90 @@ def parse_yt_dlp_chapters(data: dict[str, Any], *, video_duration: float | None 
 
 __all__ = [
     "parse_yt_dlp_chapters",
+    "slice_audio_by_chapters",
+    "process_chapters",
 ]
 
+
+def _safe_slug(s: str | None) -> str:
+    if not s:
+        return "untitled"
+    out = "".join(c if c.isalnum() or c in ("-", "_") else "-" for c in s.lower())
+    out = out.strip("-") or "untitled"
+    return out[:40]
+
+
+def slice_audio_by_chapters(
+    src: Path,
+    chapters: List[Chapter],
+    out_dir: Path,
+    *,
+    overlap_seconds: float = 2.0,
+) -> List[Tuple[int, Chapter, Path]]:
+    """Slice `src` WAV into per-chapter WAV files with small overlaps.
+
+    Returns a list of (index, chapter, path) in order.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    items: List[Tuple[int, Chapter, Path]] = []
+    n = len(chapters)
+    for i, ch in enumerate(chapters):
+        # Overlap: add overlap_seconds to the end except the last chapter
+        start = float(ch.start)
+        end = float(ch.end)
+        if i < n - 1:
+            end = min(float(chapters[i + 1].end), end + max(0.0, overlap_seconds))
+        name = f"chapter_{i:03d}_{_safe_slug(ch.title)}.wav"
+        dst = out_dir / name
+        slice_wav_segment(src, dst, start=start, end=end)
+        items.append((i, ch, dst))
+    return items
+
+
+def process_chapters(
+    src: Path,
+    chapters: List[Chapter],
+    *,
+    engine: TranscriptionEngine,
+    config: AppConfig,
+    overlap_seconds: float = 2.0,
+    work_dir: Path | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> List[Tuple[int, Chapter, List[TranscriptSegment]]]:
+    """Transcribe each chapter independently and return per-chapter segments.
+
+    Does not adjust segment timestamps to video time (handled in CHAPTER-005).
+    Progress callback receives (completed_chapters, total_chapters).
+    """
+    if not chapters:
+        return []
+    total = len(chapters)
+    cleanup = False
+    if work_dir is None:
+        tmp = tempfile.TemporaryDirectory(prefix="ytx-chapters-")
+        work_dir = Path(tmp.name)
+        cleanup = True
+    else:
+        work_dir.mkdir(parents=True, exist_ok=True)
+        tmp = None  # type: ignore
+    try:
+        parts = slice_audio_by_chapters(src, chapters, work_dir, overlap_seconds=overlap_seconds)
+        results: List[Tuple[int, Chapter, List[TranscriptSegment]]] = []
+        for idx, (i, ch, path) in enumerate(parts):
+            segs = engine.transcribe(path, config=config, on_progress=None)
+            results.append((i, ch, segs))
+            if on_progress:
+                try:
+                    on_progress(idx + 1, total)
+                except Exception:
+                    pass
+        # Ensure order by chapter index
+        results.sort(key=lambda t: t[0])
+        return results
+    finally:
+        if cleanup and tmp is not None:
+            try:
+                tmp.cleanup()
+            except Exception:
+                pass
