@@ -66,9 +66,15 @@ def parse_yt_dlp_chapters(data: dict[str, Any], *, video_duration: float | None 
         return []
     # Normalize start/end
     norm: list[tuple[float, float | None, str | None]] = []
+    def _first_present(d: dict[str, Any], keys: list[str]) -> Any:
+        for k in keys:
+            if k in d and d[k] is not None:
+                return d[k]
+        return None
+
     for it in items:
-        start = _parse_time(it.get("start_time") or it.get("start") or it.get("startTime"))
-        end = _parse_time(it.get("end_time") or it.get("end") or it.get("endTime"))
+        start = _parse_time(_first_present(it, ["start_time", "start", "startTime"]))
+        end = _parse_time(_first_present(it, ["end_time", "end", "endTime"]))
         title = (it.get("title") or it.get("name") or it.get("chapter") or "").strip() or None
         if start is None:
             continue

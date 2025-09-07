@@ -812,7 +812,7 @@ Implementation status
   **Technical Notes:** Use pytest-benchmark
   **Dependencies:** TEST-006
 **Time:** 3 hours
-**Status:** Pending — To add timing checks on representative clips/models.
+**Status:** Done — Added lightweight performance tests for chunk computation and SRT export timing; deterministic, offline, and fast.
 
 ### TEST-009: Write Comprehensive README
 
