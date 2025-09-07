@@ -268,6 +268,7 @@ Ticket notes
 **Technical Notes:** Max 3 retries
 **Dependencies:** GEMINI-006
 **Time:** 3 hours
+**Status:** Done — Wrapped `generate_content` with Tenacity (max 3 attempts, exponential backoff) and detect rate-limit via google.api_core exceptions or common 429/quota messages; non-rate errors fail fast.
 
 ### GEMINI-012: Implement Cost Estimation
 **Acceptance Criteria:**

@@ -18,6 +18,7 @@ from ..audio import probe_duration
 from ..chunking import compute_chunks, slice_wav_segment
 from ..stitch import stitch_segments
 import tempfile
+from tenacity import Retrying, stop_after_attempt, wait_random_exponential, retry_if_exception
 
 from .base import EngineError, TranscriptionEngine
 from ..config import AppConfig
@@ -162,10 +163,7 @@ class GeminiEngine(TranscriptionEngine):
                 on_progress(0.05)
             except Exception:
                 pass
-        try:
-            resp = model.generate_content([file, prompt], request_options={"timeout": 600})  # type: ignore[attr-defined]
-        except Exception as e:  # pragma: no cover
-            raise EngineError(f"Gemini generate_content failed: {e}") from e
+        resp = self._generate_with_retries(model, [file, prompt])
         payload_text = self._extract_text_from_response(resp)
         data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
         try:
@@ -205,11 +203,8 @@ class GeminiEngine(TranscriptionEngine):
             for idx, (start, end) in enumerate(ranges):
                 chunk_path = tdir / f"chunk_{idx:04d}.wav"
                 slice_wav_segment(audio_path, chunk_path, start=start, end=end)
-                try:
-                    file = self._upload_audio(chunk_path)
-                    resp = model.generate_content([file, prompt], request_options={"timeout": 600})  # type: ignore[attr-defined]
-                except Exception as e:  # pragma: no cover
-                    raise EngineError(f"Gemini chunk {idx} failed: {e}") from e
+                file = self._upload_audio(chunk_path)
+                resp = self._generate_with_retries(model, [file, prompt], context=f"chunk {idx}")
                 payload_text = self._extract_text_from_response(resp)
                 data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
                 segs = self._parse_segments_from_data_or_text(data, payload_text, total_duration=(end - start))
@@ -227,6 +222,40 @@ class GeminiEngine(TranscriptionEngine):
         # Stitch across chunk overlaps to remove duplicates and ensure continuity
         segments_out = stitch_segments(segments_out)
         return segments_out
+
+    # --- Rate limit handling and retries (GEMINI-011) ---
+
+    def _is_rate_limit_error(self, e: Exception) -> bool:
+        msg = str(e).lower()
+        try:
+            from google.api_core import exceptions as gexc  # type: ignore
+
+            for name in ("ResourceExhausted", "TooManyRequests"):
+                cls = getattr(gexc, name, None)
+                if cls is not None and isinstance(e, cls):
+                    return True
+        except Exception:
+            pass
+        return any(s in msg for s in ("rate limit", "quota", "exceeded", "too many requests", "429"))
+
+    def _generate_with_retries(self, model, parts, *, context: str | None = None):  # type: ignore[no-untyped-def]
+        def _retry_predicate(exc: Exception) -> bool:
+            return self._is_rate_limit_error(exc)
+
+        for attempt in Retrying(
+            stop=stop_after_attempt(3),
+            wait=wait_random_exponential(multiplier=1, max=8),
+            retry=retry_if_exception(_retry_predicate),
+            reraise=True,
+        ):
+            with attempt:
+                try:
+                    return model.generate_content(parts, request_options={"timeout": 600})  # type: ignore[attr-defined]
+                except Exception as e:
+                    # If not rate-limit, rethrow immediately to avoid useless backoff
+                    if not self._is_rate_limit_error(e):
+                        raise
+                    raise
 
     # --- Response parsing helpers (GEMINI-007) ---
 
