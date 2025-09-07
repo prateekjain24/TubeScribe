@@ -122,6 +122,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Handle missing API key
 **Dependencies:** WHISPER-002
 **Time:** 2 hours
+**Status:** Done — Added `engines/gemini_engine.py` with optional import and engine skeleton.
 
 ### GEMINI-002: Implement API Key Loading
 **Acceptance Criteria:**
@@ -131,6 +132,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use genai.configure()
 **Dependencies:** GEMINI-001
 **Time:** 2 hours
+**Status:** Done — Loads `GEMINI_API_KEY` (fallback `GOOGLE_API_KEY`), light validation, calls `genai.configure()`.
 
 ### GEMINI-003: Setup Model Configuration
 **Acceptance Criteria:**
@@ -140,6 +142,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Use GenerativeModel class
 **Dependencies:** GEMINI-002
 **Time:** 3 hours
+**Status:** Done — Uses `GenerativeModel('gemini-2.5-flash')` with conservative `generation_config` and error handling.
 
 ### GEMINI-004: Create Audio File Handler
 **Acceptance Criteria:**
