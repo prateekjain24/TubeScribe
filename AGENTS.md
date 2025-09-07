@@ -39,3 +39,18 @@ See IMP.md for the planned module breakdown (exporters, engines, downloader, aud
 - Never commit secrets or cookies; use `.env` locally and `GEMINI_API_KEY` env var.
 - System deps: ensure `ffmpeg` is installed and on PATH.
 - yt‑dlp: for age/region restricted videos, prefer `--cookies-from-browser` locally; do not add cookies to the repo.
+
+## Progress & Notes (ongoing)
+- Core scaffold done: uv project, Typer CLI with global `--version`/`--verbose`, cache stubs.
+- Downloader: robust URL parsing, metadata fetch, audio download via yt‑dlp API with Rich progress; subprocess fallback; retries; friendlier errors for restricted content.
+- Audio: ffmpeg normalization to 16 kHz mono WAV; ffprobe duration.
+- Exporters: JSON (compact/pretty) and SRT with line wrapping; export manager (`parse_formats`, `export_all`).
+- Whisper engine: registry, Protocol, model loading with cache, compute type auto (cuda→float16, else int8), basic transcription and language detect.
+
+## Key Learnings & Gotchas
+- uv lockfile: uv uses a workspace lock at `~/uv.lock` when a higher‑level workspace exists; we keep Option A (workspace lock) for now.
+- Typer extras: `typer[all]` is not available on newer Typer; depend on `typer` only. `pretty_exceptions_enable` can be disabled at app init.
+- faster‑whisper: CTranslate2 devices are `cpu|cuda|auto`; map `metal`→`cpu`. Default model set to `large-v3-turbo` (configurable).
+- yt‑dlp API vs CLI: prefer API for progress; fallback to CLI for resilience. Ensure `ffmpeg` exists before downloads/extracts.
+- Registry warm‑up: exporter manager lazily imports built‑ins to populate the registry before parsing format specs.
+- Avoid committing ad‑hoc artifacts (e.g., generated `.json/.srt`) to repo; keep outputs under a cache/artifacts dir.

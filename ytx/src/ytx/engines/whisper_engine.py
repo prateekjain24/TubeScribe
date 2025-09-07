@@ -13,12 +13,13 @@ subsequent tickets.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Callable
 
 from .base import EngineError, TranscriptionEngine
 from ..config import AppConfig
 from ..models import TranscriptSegment
 from . import register_engine
+from ..audio import probe_duration
 
 try:  # Import faster-whisper if available
     from faster_whisper import WhisperModel  # type: ignore
@@ -112,18 +113,39 @@ class WhisperEngine(TranscriptionEngine):
         self._MODEL_CACHE[key] = model
         return model
 
-    def transcribe(self, audio_path: Path, *, config: AppConfig) -> list[TranscriptSegment]:
+    def transcribe(
+        self,
+        audio_path: Path,
+        *,
+        config: AppConfig,
+        on_progress: Callable[[float], None] | None = None,
+    ) -> list[TranscriptSegment]:
         self._ensure_available()
         model = self._get_model(config)
+        total_dur = None
         try:
-            segments_iter, info = model.transcribe(
-                str(audio_path),
-                language=config.language,
-                vad_filter=True,
-                beam_size=5,
-                batch_size=8,
-                word_timestamps=False,
-            )
+            total_dur = probe_duration(audio_path)
+        except Exception:
+            total_dur = None
+        try:
+            try:
+                segments_iter, info = model.transcribe(
+                    str(audio_path),
+                    language=config.language,
+                    vad_filter=True,
+                    beam_size=5,
+                    batch_size=8,
+                    word_timestamps=False,
+                )
+            except TypeError:
+                # Older faster-whisper versions may not support batch_size
+                segments_iter, info = model.transcribe(
+                    str(audio_path),
+                    language=config.language,
+                    vad_filter=True,
+                    beam_size=5,
+                    word_timestamps=False,
+                )
         except Exception as e:  # pragma: no cover
             raise EngineError(f"Whisper transcription failed: {e}") from e
 
@@ -145,22 +167,41 @@ class WhisperEngine(TranscriptionEngine):
             if end <= start:
                 end = start + 0.001
             prev_end = end
+            if on_progress and total_dur and total_dur > 0:
+                ratio = max(0.0, min(1.0, end / total_dur))
+                try:
+                    on_progress(ratio)
+                except Exception:
+                    pass
             results.append(TranscriptSegment(id=i, start=start, end=end, text=text, confidence=conf))
+        if on_progress:
+            try:
+                on_progress(1.0)
+            except Exception:
+                pass
         return results
 
     def detect_language(self, audio_path: Path, *, config: AppConfig) -> str | None:
         self._ensure_available()
         model = self._get_model(config)
         try:
-            _, info = model.transcribe(
-                str(audio_path),
-                language=None,  # auto-detect
-                vad_filter=True,
-                beam_size=1,
-                batch_size=8,
-                without_timestamps=True,
-                word_timestamps=False,
-            )
+            try:
+                _, info = model.transcribe(
+                    str(audio_path),
+                    language=None,  # auto-detect
+                    vad_filter=True,
+                    beam_size=1,
+                    batch_size=8,
+                    word_timestamps=False,
+                )
+            except TypeError:
+                _, info = model.transcribe(
+                    str(audio_path),
+                    language=None,
+                    vad_filter=True,
+                    beam_size=1,
+                    word_timestamps=False,
+                )
             return getattr(info, "language", None)
         except Exception:
             return None

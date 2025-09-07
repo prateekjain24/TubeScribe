@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable, Callable
 
 from ..config import AppConfig
 from ..models import TranscriptSegment
@@ -22,11 +22,18 @@ class TranscriptionEngine(Protocol):
     # Unique engine name (e.g., "whisper", "gemini")
     name: str
 
-    def transcribe(self, audio_path: Path, *, config: AppConfig) -> list[TranscriptSegment]:
+    def transcribe(
+        self,
+        audio_path: Path,
+        *,
+        config: AppConfig,
+        on_progress: Callable[[float], None] | None = None,
+    ) -> list[TranscriptSegment]:
         """Transcribe the audio file and return transcript segments.
 
         - `audio_path` should point to a local file accessible to the engine.
         - `config` contains engine/model/language/device preferences.
+        - `on_progress` receives a float in [0,1] indicating progress.
         """
         ...
 
@@ -40,4 +47,3 @@ class TranscriptionEngine(Protocol):
 
 
 __all__ = ["EngineError", "TranscriptionEngine"]
-

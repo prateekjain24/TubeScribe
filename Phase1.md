@@ -863,6 +863,11 @@ Verification:
 **Dependencies:** WHISPER-007, CLI-009
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- `TranscriptionEngine.transcribe()` now supports an `on_progress(ratio: float)` callback.
+- Whisper engine estimates progress via `ffprobe` duration and segment end times, invoking the callback in [0,1]. CLI displays a Rich progress bar.
+
 ### WHISPER-012: Wire Up Basic Pipeline
 **Acceptance Criteria:**
 - Connect CLI to downloader to Whisper
@@ -871,6 +876,11 @@ Verification:
 **Technical Notes:** Minimal error handling for now
 **Dependencies:** All previous
 **Time:** 4 hours
+
+Status: Completed
+Verification:
+- `ytx transcribe <url> --engine whisper --model <name>` performs: metadata → download → normalize → whisper transcribe → exports (JSON, SRT).
+- Outputs named `<video_id>.json` and `<video_id>.srt` in the chosen output directory (default: CWD). Quick run succeeded on a sample video.
 
 ---
 

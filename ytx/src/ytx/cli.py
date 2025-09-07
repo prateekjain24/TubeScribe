@@ -6,7 +6,12 @@ from pathlib import Path
 import typer
 from rich.console import Console
 from .logging import configure_logging
-from .downloader import extract_video_id
+from .downloader import extract_video_id, fetch_metadata, download_audio
+from .audio import normalize_wav
+from .config import load_config
+from .engines.whisper_engine import WhisperEngine
+from .exporters.manager import parse_formats, export_all
+from .models import TranscriptDoc
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -82,16 +87,50 @@ def transcribe(
     if output_dir is not None and not output_dir.exists():
         raise typer.BadParameter("Output directory does not exist", param_hint=["output-dir"])
 
-    # CLI-009: Progress display using rich.status
+    outdir = output_dir or Path.cwd()
+    cfg = load_config(engine=engine, model=model)
+
+    # Stage 1: metadata
     with console.status("[bold blue]Fetching metadata…", spinner="dots"):
-        # Placeholder: real implementation will invoke downloader.fetch_metadata
-        pass
+        meta = fetch_metadata(url)
+
+    # Stage 2: download audio
     with console.status("[bold green]Downloading audio…", spinner="dots"):
-        # Placeholder: real implementation will invoke download_audio
-        pass
-    console.print(f"[bold]Transcribe[/]: id={vid} engine={engine} model={model}")
-    if output_dir:
-        console.print(f"Output dir: {output_dir}")
+        audio_path = download_audio(meta, outdir)
+
+    # Stage 3: normalize to WAV
+    with console.status("[bold green]Normalizing audio…", spinner="dots"):
+        wav_path = normalize_wav(audio_path, outdir / f"{meta.id}.wav")
+
+    # Stage 4: transcribe (progress bar)
+    eng = WhisperEngine()
+    from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn
+
+    console.print(f"[bold]Transcribing[/]: {meta.title or meta.id} ({cfg.model})")
+    with Progress(TextColumn("{task.description}"), BarColumn(), TimeRemainingColumn()) as progress:
+        task = progress.add_task("Transcribing", total=1.0)
+
+        def on_prog(r: float) -> None:
+            progress.update(task, completed=max(0.0, min(1.0, r)))
+
+        segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
+
+    # Optional language detection if not provided
+    language = cfg.language or eng.detect_language(wav_path, config=cfg)
+
+    # Stage 5: export
+    doc = TranscriptDoc(
+        video_id=meta.id,
+        source_url=meta.url,
+        title=meta.title,
+        duration=meta.duration,
+        language=language,
+        engine=cfg.engine,
+        model=cfg.model,
+        segments=segments,
+    )
+    written = export_all(doc, outdir, parse_formats("json,srt"))
+    console.print("[green]Done[/]: " + ", ".join(p.name for p in written))
 
 
 # CLI-010: Cache command group (stubs)
