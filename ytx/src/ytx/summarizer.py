@@ -82,6 +82,7 @@ class GeminiSummarizer(CloudEngineBase):
         parts = [prompt, text.strip()]
         resp = self._generate_with_retries(self._model, parts, timeout=180, attempts=3)
         payload = getattr(resp, "text", None) or ""
+        payload = self._strip_code_fences(payload)
         data: Dict[str, Any]
         try:
             import orjson as _orjson  # type: ignore
@@ -129,6 +130,17 @@ class GeminiSummarizer(CloudEngineBase):
             tldrs.append(r.get("tldr", ""))
         combined = "\n".join(x for x in tldrs if x)
         return self.summarize_structured(combined, language=language, bullets=bullets, max_tldr=max_tldr)
+
+    def _strip_code_fences(self, s: str) -> str:
+        t = (s or "").strip()
+        if t.startswith("```"):
+            lines = t.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            return "\n".join(lines).strip()
+        return t
 
 
 __all__ = ["GeminiSummarizer", "SummarizerError"]
