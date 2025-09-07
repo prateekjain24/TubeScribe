@@ -482,6 +482,63 @@ def cache_stats() -> None:
 app.add_typer(cache_app, name="cache")
 
 
+# --- Summarization from existing transcript ---
+@app.command("summarize-file")
+def summarize_file(
+    path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False, readable=True, help="Path to transcript JSON (TranscriptDoc)"),
+    language: str | None = typer.Option(None, "--language", help="Target language for summary or auto from doc"),
+    write: bool = typer.Option(False, "--write", help="Write summary JSON next to input file"),
+) -> None:
+    """Summarize an existing transcript JSON (TranscriptDoc)."""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except Exception as e:
+        raise typer.BadParameter(f"Failed to read file: {e}")
+    try:
+        from .models import TranscriptDoc as _TD
+
+        doc = _TD.model_validate_json(raw)
+    except Exception:
+        import json as _json
+
+        try:
+            payload = _json.loads(raw)
+            from .models import TranscriptDoc as _TD
+
+            doc = _TD.model_validate(payload)
+        except Exception as e:
+            raise typer.BadParameter(f"Invalid TranscriptDoc JSON: {e}")
+    from .summarizer import GeminiSummarizer
+    summarizer = GeminiSummarizer()
+    txt = "\n".join(s.text for s in doc.segments if s.text).strip()
+    if not txt:
+        console.print("[yellow]No text content to summarize[/]")
+        raise typer.Exit(code=1)
+    lang = language or doc.language
+    console.print("[bold]Summarizing transcript…[/]")
+    res = summarizer.summarize_long(txt, language=lang, bullets=5, max_tldr=500)
+    from .models import Summary as _Summary
+
+    summ = _Summary(tldr=res.get("tldr", ""), bullets=list(res.get("bullets", [])))
+    console.print("\n[bold]TL;DR[/]:\n" + summ.tldr)
+    if summ.bullets:
+        console.print("\n[bold]Key Points[/]:")
+        for b in summ.bullets:
+            console.print(f"- {b}")
+    if write:
+        out = path.with_suffix(".summary.json")
+        try:
+            from .cache import write_bytes_atomic
+            import orjson as _orjson  # type: ignore
+
+            data = _orjson.dumps(summ.model_dump(), option=_orjson.OPT_SORT_KEYS)
+        except Exception:
+            import json as _json
+
+            data = _json.dumps(summ.model_dump(), sort_keys=True, indent=2).encode("utf-8")
+        write_bytes_atomic(out, data)
+        console.print(f"\n[green]Wrote summary[/]: {out}")
+
 if __name__ == "__main__":
     try:
         app()
