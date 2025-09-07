@@ -57,10 +57,45 @@ class WhisperEngine(TranscriptionEngine):
             return "cpu"
         return "cpu"
 
+    def _resolve_compute_type(self, config: AppConfig) -> str:
+        ct = str(config.compute_type)
+        if ct == "auto":
+            d = self._map_device(config.device)
+            return "float16" if d == "cuda" else "int8"
+        return ct
+
+    def _validate_model_name(self, model: str) -> str:
+        name = model.strip()
+        # Allow local or remote paths
+        if "/" in name or name.startswith(".") or name.startswith("~"):
+            return name
+        allowed = {
+            "tiny",
+            "tiny.en",
+            "base",
+            "base.en",
+            "small",
+            "small.en",
+            "medium",
+            "medium.en",
+            "large-v1",
+            "large-v2",
+            "large-v3",
+            "large-v3-turbo",
+        }
+        if name in allowed:
+            return name
+        raise EngineError(
+            "Unknown Whisper model name. Supported: "
+            + ", ".join(sorted(allowed))
+            + "; or provide a local/remote model path"
+        )
+
     def _model_key(self, config: AppConfig) -> Tuple[str, str, str]:
         device = self._map_device(config.device)
-        compute = str(config.compute_type)
-        return (config.model, device, compute)
+        compute = self._resolve_compute_type(config)
+        model_name = self._validate_model_name(config.model)
+        return (model_name, device, compute)
 
     def _get_model(self, config: AppConfig) -> Any:
         self._ensure_available()
@@ -79,10 +114,30 @@ class WhisperEngine(TranscriptionEngine):
 
     def transcribe(self, audio_path: Path, *, config: AppConfig) -> list[TranscriptSegment]:
         self._ensure_available()
-        # Ensure model loads (and is cached) early; actual transcription comes later.
-        _ = self._get_model(config)
-        # Implementation arrives in WHISPER-004..007
-        raise EngineError("Whisper transcription not implemented yet (pending later tickets)")
+        model = self._get_model(config)
+        try:
+            segments_iter, info = model.transcribe(
+                str(audio_path),
+                language=config.language,
+                vad_filter=True,
+                beam_size=5,
+            )
+        except Exception as e:  # pragma: no cover
+            raise EngineError(f"Whisper transcription failed: {e}") from e
+
+        results: list[TranscriptSegment] = []
+        for i, s in enumerate(segments_iter):
+            try:
+                start = float(getattr(s, "start", 0.0) or 0.0)
+                end = float(getattr(s, "end", start))
+                text = str(getattr(s, "text", "")).strip()
+                conf = getattr(s, "avg_logprob", None)
+            except Exception:
+                continue
+            if not text:
+                continue
+            results.append(TranscriptSegment(id=i, start=start, end=end, text=text, confidence=conf))
+        return results
 
     def detect_language(self, audio_path: Path, *, config: AppConfig) -> str | None:
         # Optional implementation in later tickets; return None by default.

@@ -34,7 +34,7 @@ class AppConfig(BaseSettings):
     """Config model for the CLI and pipeline."""
 
     engine: Engine = Field(default="whisper", description="Transcription engine")
-    model: str = Field(default="small", description="Engine model name")
+    model: str = Field(default="large-v3-turbo", description="Engine model name")
     language: str | None = Field(default=None, description="Target language or auto")
     device: Device = Field(default="cpu", description="Compute device")
     compute_type: ComputeType = Field(default="int8", description="Numerical precision for local models")

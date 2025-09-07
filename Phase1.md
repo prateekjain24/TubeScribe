@@ -781,6 +781,11 @@ Verification:
 **Dependencies:** WHISPER-004
 **Time:** 2 hours
 
+Status: Completed
+Verification:
+- `WhisperEngine` validates model names against a known set or accepts paths; raises `EngineError` with supported options when invalid.
+- Updated default model in `AppConfig` to `large-v3-turbo` (aligned with .env example).
+
 ### WHISPER-006: Configure Compute Type
 **Acceptance Criteria:**
 - Set compute_type based on device
@@ -790,6 +795,11 @@ Verification:
 **Dependencies:** WHISPER-004
 **Time:** 3 hours
 
+Status: Completed
+Verification:
+- Added `_resolve_compute_type()` mapping: `auto` → `float16` on `cuda`, else `int8`. Other values pass through.
+- `metal` device maps to `cpu` for CTranslate2; cache keys include resolved compute type.
+
 ### WHISPER-007: Implement Basic Transcription
 **Acceptance Criteria:**
 - Call model.transcribe() method
@@ -798,6 +808,11 @@ Verification:
 **Technical Notes:** Use vad_filter=True
 **Dependencies:** WHISPER-004
 **Time:** 4 hours
+
+Status: Completed
+Verification:
+- Implemented `transcribe()` using `WhisperModel.transcribe(path, language=?, vad_filter=True, beam_size=5)`.
+- Converts yielded segments into `TranscriptSegment` with `start/end/text/confidence` and returns a list (skips empty text).
 
 ### WHISPER-008: Add Batched Inference
 **Acceptance Criteria:**
