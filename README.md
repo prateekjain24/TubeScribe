@@ -24,19 +24,39 @@ Requirements
   - Windows: `winget install Gyan.FFmpeg` or `choco install ffmpeg`
 
 Install (dev)
-- Enter project: `cd ytx`
-- Install deps: `uv sync`
-- Help: `uv run ytx --help`
+- Option A: venv + pip (recommended)
+  - `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
+  - `python -m pip install -U pip setuptools wheel`
+  - `python -m pip install -e .`
+  - Run: `ytx --help`
+- Option B: uv
+  - `cd ytx && uv sync`
+  - Run: `uv run ytx --help`
+
+Running locally without installing
+- Module form avoids PATH and shadowing issues:
+  - From repo root:
+    - `export PYTHONPATH="$(pwd)/ytx/src"`
+    - `cd ytx && python3 -m ytx.cli --help`
+  - Example (summarize existing transcript):
+    - `python3 -m ytx.cli summarize-file 0jpcFxY_38k.json --write`
+
+Note on namespace shadowing
+- Avoid running the `ytx` console script from inside the `ytx/` folder when using editable installs.
+- Inside that folder, Python may resolve `import ytx` to the folder instead of the installed package.
+- Prefer the module form (`python -m ytx.cli …`) or run console scripts from the repo root.
 
 Usage (CLI)
 - Whisper (CPU by default):
-  - `uv run ytx transcribe <url> --engine whisper --model small`
+  - `ytx transcribe <url> --engine whisper --model small`
 - Whisper (larger model):
-  - `uv run ytx transcribe <url> --engine whisper --model large-v3-turbo`
+  - `ytx transcribe <url> --engine whisper --model large-v3-turbo`
 - Choose output directory:
-  - `uv run ytx transcribe <url> --engine whisper --output-dir ./artifacts`
+  - `ytx transcribe <url> --engine whisper --output-dir ./artifacts`
 - Verbose logging:
-  - `uv run ytx --verbose transcribe <url> --engine whisper`
+  - `ytx --verbose transcribe <url> --engine whisper`
+- Summarize an existing transcript JSON:
+  - `ytx summarize-file /path/to/<video_id>.json --write`
 
 Metal (Apple Silicon) via whisper.cpp
 - Build whisper.cpp with Metal: `make -j METAL=1`
@@ -57,7 +77,7 @@ Outputs
 Configuration (.env)
 - Copy `.env.example` → `.env`, then adjust:
   - `YTX_ENGINE` (default `whisper`) and `WHISPER_MODEL` (e.g., `large-v3-turbo`)
-  - `GEMINI_API_KEY` (reserved for future Gemini support)
+  - `GEMINI_API_KEY` (for Gemini transcription/summarization)
   - `YTX_WHISPERCPP_BIN` and `YTX_WHISPERCPP_MODEL_PATH` for whisper.cpp
   - Optional: `YTX_CACHE_DIR`, `YTX_OUTPUT_DIR`, concurrency and timeouts
 
