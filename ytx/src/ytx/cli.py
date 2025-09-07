@@ -98,7 +98,7 @@ def transcribe(
     engine_opts: str | None = typer.Option(
         None,
         "--engine-opts",
-        help="JSON for provider-specific options (e.g., '{"utterances":true}')",
+        help='JSON for provider-specific options (e.g., \'{"utterances":true}\')',
     ),
     timestamps: str = typer.Option(
         "native",

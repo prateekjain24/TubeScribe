@@ -9,6 +9,7 @@ summaries when requested by the CLI.
 from typing import Optional, List, Dict, Any
 
 from .engines.cloud_base import CloudEngineBase
+from dotenv import load_dotenv
 from .engines.gemini_engine import _resolve_model_name  # reuse model selection
 
 
@@ -30,6 +31,11 @@ def _load_api_key() -> str:
 
 
 def _ensure_client() -> None:
+    # Load .env so local runs pick up keys without exporting environment
+    try:
+        load_dotenv(override=False)
+    except Exception:
+        pass
     try:
         import google.generativeai as genai  # type: ignore
 
