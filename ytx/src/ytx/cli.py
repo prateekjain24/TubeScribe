@@ -318,9 +318,9 @@ def transcribe(
                 segments = stitch_chapter_segments(offset_chapter_segments(results))
                 # Mark overall complete
                 progress.update(task, completed=1.0)
-                else:
-                    # Single-pass transcription
-                    segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
+            else:
+                # Single-pass transcription
+                segments = eng.transcribe(wav_path, config=cfg, on_progress=on_prog)
         except Exception as e:
             if engine == "gemini" and fallback:
                 console.print(f"[yellow]Gemini failed ({e}); falling back to Whisper[/]")
