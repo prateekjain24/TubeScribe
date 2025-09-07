@@ -28,6 +28,7 @@ except Exception:  # pragma: no cover
 Engine = Literal["whisper", "whispercpp", "gemini"]
 Device = Literal["cpu", "auto", "cuda", "metal"]
 ComputeType = Literal["auto", "int8", "int8_float16", "float16", "float32"]
+TimestampPolicy = Literal["native", "chunked", "none"]
 
 
 class AppConfig(BaseSettings):
@@ -38,6 +39,9 @@ class AppConfig(BaseSettings):
     language: str | None = Field(default=None, description="Target language or auto")
     device: Device = Field(default="cpu", description="Compute device")
     compute_type: ComputeType = Field(default="int8", description="Numerical precision for local models")
+    # Cross-provider options
+    timestamp_policy: TimestampPolicy = Field(default="native", description="Timestamp handling policy")
+    engine_options: dict[str, Any] = Field(default_factory=dict, description="Provider-specific options")
 
     # whisper.cpp (Metal) settings
     whispercpp_bin: str = Field(default="main", description="Path or name of whisper.cpp binary (main)")
@@ -61,6 +65,8 @@ class AppConfig(BaseSettings):
             "language": self.language,
             "device": self.device,
             "compute_type": self.compute_type,
+            "timestamp_policy": self.timestamp_policy,
+            "engine_options": self.engine_options or {},
         }
         # Engine-specific knobs that impact output determinism
         if self.engine == "whispercpp":
@@ -92,4 +98,5 @@ __all__ = [
     "Engine",
     "Device",
     "ComputeType",
+    "TimestampPolicy",
 ]

@@ -89,6 +89,16 @@ def transcribe(
         help="Transcription engine (whisper|whispercpp)",
     ),
     model: str = typer.Option("small", "--model", help="Model name for the selected engine"),
+    engine_opts: str | None = typer.Option(
+        None,
+        "--engine-opts",
+        help="JSON for provider-specific options (e.g., '{"utterances":true}')",
+    ),
+    timestamps: str = typer.Option(
+        "native",
+        "--timestamps",
+        help="Timestamp policy: native|chunked|none",
+    ),
     output_dir: Path | None = typer.Option(
         None,
         "--output-dir",
@@ -115,7 +125,27 @@ def transcribe(
     if output_dir is not None and not output_dir.exists():
         raise typer.BadParameter("Output directory does not exist", param_hint=["output-dir"])
 
-    cfg = load_config(engine=engine, model=model)
+    # Parse engine_opts JSON if provided
+    opts: dict = {}
+    if engine_opts:
+        try:
+            import orjson as _orjson  # type: ignore
+
+            opts = _orjson.loads(engine_opts)
+            if not isinstance(opts, dict):
+                raise ValueError("engine-opts must be a JSON object")
+        except Exception:
+            import json as _json
+
+            try:
+                opts = _json.loads(engine_opts)
+                if not isinstance(opts, dict):
+                    raise ValueError
+            except Exception:
+                raise typer.BadParameter("Invalid JSON for --engine-opts", param_hint=["--engine-opts"])
+    if timestamps not in {"native", "chunked", "none"}:
+        raise typer.BadParameter("--timestamps must be one of native|chunked|none", param_hint=["--timestamps"])
+    cfg = load_config(engine=engine, model=model, engine_options=opts, timestamp_policy=timestamps)
     # Prepare artifact paths for this video/config
     paths = artifact_paths_for(video_id=vid, config=cfg, create=False)
 
@@ -213,7 +243,7 @@ def transcribe(
     final_paths = artifact_paths_for(video_id=meta.id, config=used_cfg, create=True)
     outdir_final = final_paths.dir
     written = export_all(doc, outdir_final, parse_formats("json,srt"))
-    write_meta(final_paths, build_meta_payload(video_id=meta.id, config=used_cfg, source=meta))
+    write_meta(final_paths, build_meta_payload(video_id=meta.id, config=used_cfg, source=meta, provider=used_engine_name))
     console.print("[green]Done[/]: " + ", ".join(p.name for p in written))
     # If user requested an explicit output_dir different from cache dir, also write there
     if output_dir and output_dir.resolve() != outdir_final.resolve():

@@ -21,6 +21,7 @@ import tempfile
 from tenacity import Retrying, stop_after_attempt, wait_random_exponential, retry_if_exception
 
 from .base import EngineError, TranscriptionEngine
+from .cloud_base import CloudEngineBase
 from ..config import AppConfig
 from ..models import TranscriptSegment
 from . import register_engine
@@ -74,7 +75,7 @@ def _resolve_model_name(model: str | None) -> str:
 
 
 @register_engine
-class GeminiEngine(TranscriptionEngine):
+class GeminiEngine(CloudEngineBase, TranscriptionEngine):
     name = "gemini"
 
     def __init__(self) -> None:
@@ -137,16 +138,22 @@ class GeminiEngine(TranscriptionEngine):
         config: AppConfig,
         on_progress: Callable[[float], None] | None = None,
     ) -> list[TranscriptSegment]:
-        # Decide chunking: if audio longer than window, process in chunks
+        # Decide chunking by policy or duration threshold
         try:
             duration = probe_duration(audio_path)
         except Exception:
             duration = 0.0
         window = 600.0  # 10 minutes
         overlap = 2.0
-        if duration > window:
+        if config.timestamp_policy == "chunked" or duration > window:
             return self._transcribe_chunked(audio_path, config=config, on_progress=on_progress, window_seconds=window, overlap_seconds=overlap)
-        return self._transcribe_single(audio_path, config=config, on_progress=on_progress)
+        segs = self._transcribe_single(audio_path, config=config, on_progress=on_progress)
+        if config.timestamp_policy == "none":
+            # Collapse to a single text block
+            text = " ".join(s.text for s in segs if s.text).strip()
+            end = max((s.end for s in segs), default=duration)
+            return [TranscriptSegment(id=0, start=0.0, end=max(0.001, float(end)), text=text)]
+        return segs
 
     def _transcribe_single(
         self,
@@ -238,24 +245,7 @@ class GeminiEngine(TranscriptionEngine):
             pass
         return any(s in msg for s in ("rate limit", "quota", "exceeded", "too many requests", "429"))
 
-    def _generate_with_retries(self, model, parts, *, context: str | None = None):  # type: ignore[no-untyped-def]
-        def _retry_predicate(exc: Exception) -> bool:
-            return self._is_rate_limit_error(exc)
-
-        for attempt in Retrying(
-            stop=stop_after_attempt(3),
-            wait=wait_random_exponential(multiplier=1, max=8),
-            retry=retry_if_exception(_retry_predicate),
-            reraise=True,
-        ):
-            with attempt:
-                try:
-                    return model.generate_content(parts, request_options={"timeout": 600})  # type: ignore[attr-defined]
-                except Exception as e:
-                    # If not rate-limit, rethrow immediately to avoid useless backoff
-                    if not self._is_rate_limit_error(e):
-                        raise
-                    raise
+    # use CloudEngineBase._generate_with_retries
 
     # --- Response parsing helpers (GEMINI-007) ---
 

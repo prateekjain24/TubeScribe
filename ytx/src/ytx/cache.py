@@ -14,10 +14,11 @@ Can be overridden via YTX_CACHE_DIR environment variable.
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, TYPE_CHECKING
+from typing import Final, TYPE_CHECKING, Iterator
 from datetime import datetime, timezone
 import tempfile
 import json as _json
+import shutil
 
 if TYPE_CHECKING:  # avoid runtime import cycles
     from .config import AppConfig
@@ -260,6 +261,8 @@ def build_meta_payload(
     video_id: str,
     config: "AppConfig",
     source: "VideoMetadata | None" = None,
+    provider: str | None = None,
+    request_id: str | None = None,
 ) -> dict:
     """Build a meta.json payload with creation info, version, and source.
 
@@ -274,6 +277,10 @@ def build_meta_payload(
         "model": config.model,
         "config_hash": config.config_hash(),
     }
+    if provider:
+        payload["provider"] = provider
+    if request_id:
+        payload["request_id"] = request_id
     if source is not None:
         payload["source"] = {
             "url": source.url,
@@ -295,6 +302,181 @@ def write_meta(paths: ArtifactPaths, payload: dict) -> Path:
     return write_bytes_atomic(paths.meta_json, data) 
 
 
+# -------- Listing, Stats, and Expiration (CACHE-007..010) --------
+
+
+@dataclass(frozen=True)
+class CacheEntry:
+    dir: Path
+    video_id: str
+    engine: str
+    model: str
+    config_hash: str
+    created_at: datetime | None
+    size_bytes: int
+    title: str | None = None
+    url: str | None = None
+
+
+def _parse_iso8601_z(s: str) -> datetime | None:
+    try:
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        return datetime.fromisoformat(s)
+    except Exception:
+        return None
+
+
+def dir_size(path: Path) -> int:
+    total = 0
+    try:
+        for p in Path(path).rglob("*"):
+            try:
+                if p.is_file():
+                    total += p.stat().st_size
+            except FileNotFoundError:
+                pass
+    except FileNotFoundError:
+        return 0
+    return total
+
+
+def iter_artifact_dirs(root: Path | None = None) -> Iterator[Path]:
+    r = (root or cache_root())
+    if not r.exists():
+        return iter(())
+    for video_dir in r.iterdir():
+        if not video_dir.is_dir():
+            continue
+        for engine_dir in video_dir.iterdir():
+            if not engine_dir.is_dir():
+                continue
+            for model_dir in engine_dir.iterdir():
+                if not model_dir.is_dir():
+                    continue
+                for hash_dir in model_dir.iterdir():
+                    if hash_dir.is_dir():
+                        yield hash_dir
+
+
+def scan_cache(root: Path | None = None) -> list[CacheEntry]:
+    entries: list[CacheEntry] = []
+    for d in iter_artifact_dirs(root):
+        try:
+            video_id = d.parents[3].name
+            engine = d.parents[2].name
+            model = d.parents[1].name
+            cfg_hash = d.name
+        except Exception:
+            continue
+        paths = ArtifactPaths(dir=d, meta_json=d / META_JSON, transcript_json=d / TRANSCRIPT_JSON, captions_srt=d / CAPTIONS_SRT)
+        if not artifacts_exist(paths):
+            continue
+        created_at: datetime | None = None
+        title: str | None = None
+        url: str | None = None
+        if paths.meta_json.exists():
+            try:
+                meta = read_meta(paths)
+                created_at = _parse_iso8601_z(str(meta.get("created_at", "")))
+                src = meta.get("source") or {}
+                title = src.get("title")
+                url = src.get("url")
+            except Exception:
+                pass
+        entries.append(
+            CacheEntry(
+                dir=d,
+                video_id=video_id,
+                engine=engine,
+                model=model,
+                config_hash=cfg_hash,
+                created_at=created_at,
+                size_bytes=dir_size(d),
+                title=title,
+                url=url,
+            )
+        )
+    return entries
+
+
+def clear_cache(root: Path | None = None, *, video_id: str | None = None) -> tuple[int, int]:
+    """Clear entire cache or a specific video's cache subtree.
+
+    Returns (removed_dir_count, freed_bytes).
+    """
+    r = (root or cache_root())
+    if not r.exists():
+        return (0, 0)
+    targets: list[Path] = []
+    if video_id:
+        target = r / _sanitize_segment(video_id)
+        if target.exists() and target.is_dir():
+            targets.append(target)
+    else:
+        targets.append(r)
+    removed = 0
+    freed = 0
+    for p in targets:
+        freed += dir_size(p)
+        try:
+            shutil.rmtree(p)
+            removed += 1
+        except FileNotFoundError:
+            pass
+    return (removed, freed)
+
+
+def cache_statistics(root: Path | None = None) -> dict:
+    entries = scan_cache(root)
+    unique_videos = len({e.video_id for e in entries})
+    return {
+        "entries": len(entries),
+        "unique_videos": unique_videos,
+        "total_size_bytes": sum(e.size_bytes for e in entries),
+    }
+
+
+def expire_cache(ttl_seconds: int, root: Path | None = None) -> list[Path]:
+    """Delete artifact dirs whose created_at exceeds TTL.
+
+    Returns list of removed directories. Only considers entries with valid created_at.
+    """
+    now = datetime.now(timezone.utc)
+    removed: list[Path] = []
+    for e in scan_cache(root):
+        if e.created_at is None:
+            continue
+        created = e.created_at.astimezone(timezone.utc)
+        age = (now - created).total_seconds()
+        if age > ttl_seconds:
+            try:
+                shutil.rmtree(e.dir)
+                removed.append(e.dir)
+            except FileNotFoundError:
+                pass
+    return removed
+
+
+def get_ttl_seconds_from_env() -> int | None:
+    """Read TTL from env: YTX_CACHE_TTL_SECONDS or YTX_CACHE_TTL_DAYS."""
+    s = os.environ.get("YTX_CACHE_TTL_SECONDS")
+    if s:
+        try:
+            v = int(s)
+            return v if v > 0 else None
+        except Exception:
+            return None
+    d = os.environ.get("YTX_CACHE_TTL_DAYS")
+    if d:
+        try:
+            v = int(d)
+            return v * 86400 if v > 0 else None
+        except Exception:
+            return None
+    return None
+
+
 __all__ = [
     "META_JSON",
     "TRANSCRIPT_JSON",
@@ -312,4 +494,10 @@ __all__ = [
     "write_bytes_atomic",
     "build_meta_payload",
     "write_meta",
+    "CacheEntry",
+    "scan_cache",
+    "clear_cache",
+    "cache_statistics",
+    "expire_cache",
+    "get_ttl_seconds_from_env",
 ]
