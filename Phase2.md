@@ -18,6 +18,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Default ~/.cache/ytx/
 **Dependencies:** Phase 1 complete
 **Time:** 2 hours
+**Status:** Done — Added `ytx/src/ytx/cache.py` with XDG-aware `cache_root()` and base helpers.
 
 ### CACHE-002: Implement Cache Path Builder
 **Acceptance Criteria:**
@@ -27,6 +28,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** video_id/engine/model/hash/
 **Dependencies:** CACHE-001
 **Time:** 3 hours
+**Status:** Done — Implemented `build_artifact_dir()` and `build_artifact_paths()` (video_id/engine/model/hash).
 
 ### CACHE-003: Add Cache Existence Check
 **Acceptance Criteria:**
@@ -36,6 +38,7 @@ Phase 2 adds advanced capabilities including Gemini integration, intelligent cac
 **Technical Notes:** Check all expected files
 **Dependencies:** CACHE-002
 **Time:** 2 hours
+**Status:** Done — Added `artifacts_exist()`; verifies presence and non‑empty `transcript.json` and `captions.srt`.
 
 ### CACHE-004: Implement Artifact Reader
 **Acceptance Criteria:**
