@@ -644,6 +644,7 @@ def export_notes(
     md_include_transcript: bool = typer.Option(False, "--md-include-transcript/--no-md-include-transcript", help="Append full transcript section"),
     md_include_chapters: bool = typer.Option(True, "--md-include-chapters/--no-md-include-chapters", help="Include chapter outline"),
     md_template: Path | None = typer.Option(None, "--md-template", exists=True, file_okay=True, dir_okay=False, readable=True, help="Optional template path for Markdown"),
+    md_auto_chapters_min: float | None = typer.Option(None, "--md-auto-chapters-min", help="If no chapters found, synthesize chapters every N minutes"),
 ) -> None:
     """Export notes (Markdown) from cache or an input TranscriptDoc JSON file."""
     # Validate inputs
@@ -708,6 +709,7 @@ def export_notes(
         include_transcript=md_include_transcript,
         include_chapters=md_include_chapters,
         template=md_template,
+        auto_chapter_every_sec=(md_auto_chapters_min * 60.0) if (md_auto_chapters_min and md_auto_chapters_min > 0) else None,
     )
     path = exp.export(doc, output_dir)
     console.print(f"[green]Wrote[/]: {path}")

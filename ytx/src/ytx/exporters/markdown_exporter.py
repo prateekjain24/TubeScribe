@@ -23,12 +23,14 @@ class MarkdownExporter(FileExporter):
         include_transcript: bool = False,
         include_chapters: bool = True,
         template: Path | None = None,
+        auto_chapter_every_sec: float | None = None,
     ) -> None:
         self.frontmatter = frontmatter
         self.link_style = link_style
         self.include_transcript = include_transcript
         self.include_chapters = include_chapters
         self.template = template
+        self.auto_chapter_every_sec = auto_chapter_every_sec
 
     def export(self, doc: TranscriptDoc, out_dir: Path) -> Path:
         content = self._render(doc)
@@ -68,9 +70,13 @@ class MarkdownExporter(FileExporter):
                 parts.append("\n## Key Points\n" + "\n".join(f"- {safe_md(b)}" for b in bullets if b))
 
         # Chapters
-        if self.include_chapters and (doc.chapters or []):
+        if self.include_chapters:
+            # Use chapters from doc, or synthesize if requested
+            chapters = list(doc.chapters or [])
+            if not chapters and self.auto_chapter_every_sec and getattr(doc, "duration", None):
+                chapters = self._auto_chapters(doc)
             lines: list[str] = []
-            for ch in (doc.chapters or []):
+            for ch in chapters:
                 start = seconds_to_hhmmss(float(getattr(ch, "start", 0.0) or 0.0))
                 when = float(getattr(ch, "start", 0.0) or 0.0)
                 link = youtube_url(doc.video_id, when, style=self.link_style)
@@ -126,6 +132,32 @@ class MarkdownExporter(FileExporter):
             pass
         return datetime.utcnow().date().isoformat()
 
+    # --- synthesize simple chapters ---
+    def _auto_chapters(self, doc: TranscriptDoc):  # type: ignore[no-untyped-def]
+        try:
+            total = float(getattr(doc, "duration", 0.0) or 0.0)
+        except Exception:
+            total = 0.0
+        interval = float(self.auto_chapter_every_sec or 0.0)
+        if total <= 0.0 or interval <= 0.0:
+            return []
+        starts: list[float] = []
+        t = 0.0
+        while t < total:
+            starts.append(t)
+            t += interval
+        # Ensure last starts not beyond total; no explicit end used for rendering
+        class _C:
+            def __init__(self, title: str, start: float, end: float) -> None:
+                self.title = title
+                self.start = start
+                self.end = end
+
+        out = []
+        for i, s in enumerate(starts, start=1):
+            e = min(total, s + interval)
+            out.append(_C(title=f"Part {i}", start=s, end=e))
+        return out
+
 
 __all__ = ["MarkdownExporter"]
-

@@ -41,3 +41,13 @@ v0.3.0 (2025-09-08)
   - Optional transcript section (off by default).
 - CLI: `ytx export` command to export from cache (`--video-id`) or from a TranscriptDoc JSON file (`--from-file`).
 - Docs: README and API updated with usage and options.
+
+v0.3.2 (2025-09-08)
+--------------------
+- fix(cache): `scan_cache` and artifact checks now accept legacy `<video_id>.json/.srt` alongside canonical `transcript.json/captions.srt`.
+- fix(cli:export): when `transcript.json` is missing, fall back to `<video_id>.json` for cached export.
+
+v0.3.3 (2025-09-08)
+--------------------
+- fix(cache): correct cache directory parsing (`<root>/<video>/<engine>/<model>/<hash>`) when deriving `video_id`, ensuring cache listings and exports find entries.
+- test(cache): add test to validate video_id parsing and cache scanning.

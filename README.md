@@ -132,6 +132,7 @@ Export Markdown notes
   - `--md-link-style short|long` — youtu.be vs full URL
   - `--md-include-transcript` — append full transcript section (off by default)
   - `--md-include-chapters/--no-md-include-chapters` — include chapter outline (on by default)
+  - `--md-auto-chapters-min N` — if no chapters are present, synthesize outline every N minutes
 
 Example output (Markdown)
 ```
