@@ -19,7 +19,7 @@ Resources
 - CLI entry: ytx/src/ytx/cli.py (commands, flags, progress)
 - Config guide: docs/CONFIG.md (env vars, timeouts, cache, engine options)
 - API overview: docs/API.md (modules, models, extension points)
-- Release checklist: next.md, docs/RELEASE.md
+- Release checklist: docs/RELEASE.md
 - Health check: ytx health
 - End‑to‑end script: scripts/integration_e2e.sh
 
@@ -28,11 +28,14 @@ Quickstart (≈ 2 minutes)
 - Python 3.11+
 - FFmpeg on PATH (check: `ffmpeg -version`)
 
-2) Install (dev)
-- Recommended: venv + pip
-  - `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
-  - `python -m pip install -U pip setuptools wheel`
-  - `python -m pip install -e .`
+2) Install
+- Recommended (CLI): `pipx install tubescribe`  (or `pip install tubescribe`)
+- Verify: `ytx --version` or `tubescribe --version`
+
+Dev install (from source)
+- `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
+- `python -m pip install -U pip setuptools wheel`
+- `python -m pip install -e .`
 - Or without installing: from repo root → `export PYTHONPATH="$(pwd)/ytx/src" && cd ytx && python3 -m ytx.cli --help`
 
 3) Health check
@@ -99,6 +102,7 @@ Apple Silicon (whisper.cpp)
 Troubleshooting
 - “ffmpeg not found”: install FFmpeg and ensure it’s on PATH (see Requirements).
 - “Restricted / Private / Age‑restricted”: use cookies with yt‑dlp outside the tool to download audio locally, then run `ytx summarize-file` on the transcript.
+- “ytx: command not found”: ensure your Python scripts path is on PATH (e.g., `~/.local/bin` or pipx bin dir).
 - “No module named ytx”: avoid running `ytx` from inside the `ytx/` folder; or use module form: `PYTHONPATH=ytx/src python -m ytx.cli …`
 - Gemini timestamps: best‑effort; prefer `--timestamps chunked` for reliable coarse timings.
 
@@ -111,4 +115,3 @@ Contributing
 - Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
 - Run tests: `cd ytx && PYTHONPATH=src python -m pytest -q`
 - Lint (if configured): `ruff check .`
-
