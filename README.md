@@ -3,7 +3,20 @@ TubeScribe (ytx) — Fast YouTube Transcription & Captions
 
 Repository: https://github.com/prateekjain24/TubeScribe
 
+
+
 TubeScribe (CLI command: `ytx`) downloads YouTube audio, normalizes it, transcribes with your chosen engine, and writes clean transcript JSON + SRT captions. It includes smart caching, chapter processing, and optional summarization.
+
+Resources
+  
+- Quickstart: README.md
+- Engines: ytx/src/ytx/engines/ (whisper_engine.py, gemini_engine.py, openai_engine.py, deepgram_engine.py)
+- CLI entry: ytx/src/ytx/cli.py (commands, flags, progress)
+- Config guide: docs/CONFIG.md (env vars, timeouts, cache, engine options)
+- API overview: docs/API.md (modules, models, extension points)
+- Release checklist: next.md, docs/RELEASE.md
+- Health check: ytx health
+- End‑to‑end script: scripts/integration_e2e.sh
 
 Quickstart (≈ 2 minutes)
 1) Prereqs
@@ -93,3 +106,5 @@ Contributing
 - Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
 - Run tests: `cd ytx && PYTHONPATH=src python -m pytest -q`
 - Lint (if configured): `ruff check .`
+
+
