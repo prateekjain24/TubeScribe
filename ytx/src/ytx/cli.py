@@ -636,7 +636,7 @@ def health() -> None:
     """Run basic health checks: ffmpeg, API keys, and network."""
     from rich.table import Table
     from .audio import ensure_ffmpeg
-    import os
+    import os, shutil
     import httpx
 
     checks: list[tuple[str, str]] = []
@@ -648,12 +648,33 @@ def health() -> None:
     except Exception as e:
         checks.append(("ffmpeg", f"missing: {e}"))
 
-    # Gemini API key
-    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if key:
-        checks.append(("gemini_api_key", "present"))
+    # Engines availability / configuration
+    try:
+        __import__("faster_whisper")
+        checks.append(("whisper_engine", "available"))
+    except Exception:
+        checks.append(("whisper_engine", "unavailable"))
+
+    env_bin = os.environ.get("YTX_WHISPERCPP_BIN")
+    cpp_found = (shutil.which(env_bin) if env_bin else None) or shutil.which("main")
+    checks.append(("whispercpp_bin", "configured" if env_bin and (cpp_found or os.path.isfile(env_bin)) else ("present" if cpp_found else "absent")))
+
+    # API keys
+    key_g = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    checks.append(("gemini_api_key", "present" if key_g else "absent"))
+
+    key_o = os.environ.get("OPENAI_API_KEY")
+    if key_o:
+        checks.append(("openai_api_key", "present" if (key_o.startswith("sk-") and len(key_o) > 20) else "invalid"))
     else:
-        checks.append(("gemini_api_key", "absent"))
+        checks.append(("openai_api_key", "absent"))
+
+    key_d = os.environ.get("DEEPGRAM_API_KEY")
+    checks.append(("deepgram_api_key", "present" if key_d else "absent"))
+
+    # Tools
+    ytdlp = shutil.which("yt-dlp")
+    checks.append(("yt_dlp", "ok" if ytdlp else "missing"))
 
     # Network
     try:
@@ -667,7 +688,16 @@ def health() -> None:
     table = Table(title="ytx health")
     table.add_column("Check")
     table.add_column("Status")
+
+    def _color(v: str) -> str:
+        if any(x in v for x in ("ok", "present", "available", "configured", "status 2")):
+            return "green"
+        if any(x in v for x in ("invalid", "absent")):
+            return "yellow"
+        if any(x in v for x in ("missing", "unavailable", "error")):
+            return "red"
+        return "white"
+
     for k, v in checks:
-        color = "green" if v in ("ok", "present") or v.startswith("status 2") else ("yellow" if "absent" in v else "red")
-        table.add_row(k, f"[{color}]{v}[/]")
+        table.add_row(k, f"[{_color(v)}]{v}[/]")
     console.print(table)
