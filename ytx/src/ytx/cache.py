@@ -164,12 +164,28 @@ def _nonempty_file(p: Path) -> bool:
 
 
 def artifacts_exist(paths: ArtifactPaths) -> bool:
-    """Return True if all expected artifacts exist and look valid.
+    """Return True if expected artifacts exist and look valid.
 
-    Basic integrity: files must exist and be non-empty. Deeper validation,
-    such as JSON parsing, happens in later tickets (CACHE-004).
+    Accepts either canonical names (transcript.json, captions.srt) or
+    legacy/video-id based names (<video_id>.json/.srt) to ensure backwards
+    compatibility with previously written artifacts.
     """
-    return _nonempty_file(paths.transcript_json) and _nonempty_file(paths.captions_srt)
+    # canonical
+    json_ok = _nonempty_file(paths.transcript_json)
+    srt_ok = _nonempty_file(paths.captions_srt)
+    if json_ok and srt_ok:
+        return True
+    # fallback to <video_id>.json/.srt
+    try:
+        vid = paths.dir.parents[3].name
+    except Exception:
+        vid = None
+    if vid:
+        if not json_ok:
+            json_ok = _nonempty_file(paths.dir / f"{vid}.json")
+        if not srt_ok:
+            srt_ok = _nonempty_file(paths.dir / f"{vid}.srt")
+    return json_ok and srt_ok
 
 
 # --- CACHE-004: Artifact Reader ---
@@ -211,7 +227,15 @@ def read_transcript_doc(paths: ArtifactPaths) -> "TranscriptDoc":
     """
     from .models import TranscriptDoc  # local import to avoid cycles
 
-    raw = _read_json_bytes(paths.transcript_json)
+    try:
+        raw = _read_json_bytes(paths.transcript_json)
+    except CacheError:
+        # Fallback to <video_id>.json if present
+        try:
+            vid = paths.dir.parents[3].name
+            raw = _read_json_bytes(paths.dir / f"{vid}.json")
+        except Exception as e:
+            raise
     try:
         payload = _loads_json(raw)
         return TranscriptDoc.model_validate(payload)

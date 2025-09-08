@@ -682,7 +682,12 @@ def export_notes(
         entry = entries[-1]
         json_path = entry.dir / TRANSCRIPT_JSON
         if not json_path.exists():
-            raise typer.BadParameter(f"Cached transcript.json not found at: {json_path}")
+            # Fallback to <video_id>.json within the same dir
+            alt = entry.dir / f"{entry.video_id}.json"
+            if alt.exists():
+                json_path = alt
+            else:
+                raise typer.BadParameter(f"Cached transcript not found at: {json_path} or {alt}")
         raw = json_path.read_text(encoding="utf-8")
         try:
             from .models import TranscriptDoc as _TD
