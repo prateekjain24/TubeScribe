@@ -1,105 +1,95 @@
-TubeScribe (ytx) — YouTube Transcriber (Whisper / Metal via whisper.cpp)
-=======================================================================
-
-CLI that downloads YouTube audio and produces transcripts and captions using:
-- Local Whisper (faster-whisper / CTranslate2)
-- Whisper.cpp (Metal acceleration on Apple Silicon)
+TubeScribe (ytx) — Fast YouTube Transcription & Captions
+========================================================
 
 Repository: https://github.com/prateekjain24/TubeScribe
 
-Managed with venv+pip (or uv), using the `src` layout.
+TubeScribe (CLI command: `ytx`) downloads YouTube audio, normalizes it, transcribes with your chosen engine, and writes clean transcript JSON + SRT captions. It includes smart caching, chapter processing, and optional summarization.
 
-Features
-- One command: URL → audio → normalized WAV → transcript JSON + SRT captions
-- Engines: `whisper` (faster-whisper) and `whispercpp` (Metal via whisper.cpp)
-- Rich progress for download + transcription
-- Deterministic JSON (orjson) and SRT line wrapping
+Quickstart (≈ 2 minutes)
+1) Prereqs
+- Python 3.11+
+- FFmpeg on PATH (check: `ffmpeg -version`)
 
-Requirements
-- Python >= 3.11
-- FFmpeg installed and on PATH
-  - Check: `ffmpeg -version`
-  - macOS: `brew install ffmpeg`
-  - Ubuntu/Debian: `sudo apt-get update && sudo apt-get install -y ffmpeg`
-  - Fedora: `sudo dnf install -y ffmpeg`
-  - Arch: `sudo pacman -S ffmpeg`
-  - Windows: `winget install Gyan.FFmpeg` or `choco install ffmpeg`
-
-Install (dev)
-- Option A: venv + pip (recommended)
+2) Install (dev)
+- Recommended: venv + pip
   - `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
   - `python -m pip install -U pip setuptools wheel`
   - `python -m pip install -e .`
-  - Run: `ytx --help`
-- Option B: uv
-  - `cd ytx && uv sync`
-  - Run: `uv run ytx --help`
+- Or without installing: from repo root → `export PYTHONPATH="$(pwd)/ytx/src" && cd ytx && python3 -m ytx.cli --help`
 
-Running locally without installing
-- Module form avoids PATH and shadowing issues:
-  - From repo root:
-    - `export PYTHONPATH="$(pwd)/ytx/src"`
-    - `cd ytx && python3 -m ytx.cli --help`
-  - Example (summarize existing transcript):
-    - `python3 -m ytx.cli summarize-file 0jpcFxY_38k.json --write`
+3) Health check
+- `ytx health`  (checks ffmpeg, API key presence, and basic network)
 
-Note on namespace shadowing
-- Avoid running the `ytx` console script from inside the `ytx/` folder when using editable installs.
-- Inside that folder, Python may resolve `import ytx` to the folder instead of the installed package.
-- Prefer the module form (`python -m ytx.cli …`) or run console scripts from the repo root.
+4) Transcribe (local Whisper)
+- `ytx transcribe "https://youtu.be/<VIDEOID>" --engine whisper --model small`
 
-Usage (CLI)
-- Whisper (CPU by default):
-  - `ytx transcribe <url> --engine whisper --model small`
-- Whisper (larger model):
-  - `ytx transcribe <url> --engine whisper --model large-v3-turbo`
-- Choose output directory:
-  - `ytx transcribe <url> --engine whisper --output-dir ./artifacts`
-- Verbose logging:
-  - `ytx --verbose transcribe <url> --engine whisper`
+Engines at a glance
+- Whisper (local, faster‑whisper): fast on CPU/GPU; default.
+- Whisper.cpp (Metal): on Apple Silicon; pass `--engine whispercpp --model /path/to/model.gguf`.
+- Gemini (cloud): best‑effort timestamps; recommended `--timestamps chunked --fallback`.
+- OpenAI (cloud): `--engine openai` (SDK‑first optional; HTTP fallback).
+- Deepgram (cloud): `--engine deepgram` (SDK‑first optional; HTTP fallback).
+- ElevenLabs (cloud): stub in place; STT support pending.
+
+Common flags
+- `--engine whisper|whispercpp|gemini|openai|deepgram` — choose an engine
+- `--model <name>` — engine model (e.g., small, large-v3-turbo, gemini-2.5-flash, whisper-1)
+- `--timestamps native|chunked|none` — timestamp policy (chunked recommended for LLM engines)
+- `--engine-opts '{"k":v}'` — provider options (e.g., Deepgram: `{"utterances":true,"smart_format":true}`)
+- `--by-chapter --parallel-chapters --chapter-overlap 2.0` — process chapters in parallel
+- `--summarize --summarize-chapters` — overall TL;DR + bullets; per‑chapter summaries
+- `--output-dir ./artifacts` — write outputs outside the cache dir
+- `--overwrite` — ignore cache and reprocess
+- `--fallback` — on Gemini errors, fallback to Whisper
+- `--debug` — verbose logs
+
+Examples
+- Whisper (CPU):
+  - `ytx transcribe "https://youtu.be/<VIDEOID>" --engine whisper --model small`
+- Whisper (Metal via whisper.cpp):
+  - `ytx transcribe "https://youtu.be/<VIDEOID>" --engine whispercpp --model /path/to/gguf-large-v3-turbo.bin`
+- Gemini (chunked timestamps + fallback):
+  - `ytx transcribe "https://youtu.be/<VIDEOID>" --engine gemini --timestamps chunked --fallback`
+- OpenAI (verbose segments when available):
+  - `ytx transcribe "https://youtu.be/<VIDEOID>" --engine openai --timestamps native`
+- Deepgram (utterances):
+  - `ytx transcribe "https://youtu.be/<VIDEOID>" --engine deepgram --engine-opts '{"utterances":true,"smart_format":true}' --timestamps native`
+- Chapters + summaries:
+  - `ytx transcribe "https://youtu.be/<VIDEOID>" --by-chapter --parallel-chapters --chapter-overlap 2.0 --summarize-chapters --summarize`
 - Summarize an existing transcript JSON:
   - `ytx summarize-file /path/to/<video_id>.json --write`
 
-Metal (Apple Silicon) via whisper.cpp
-- Build whisper.cpp with Metal: `make -j METAL=1`
-- Download a GGUF/GGML model (e.g., large-v3-turbo)
-- Run with whisper.cpp engine by passing a model file path:
-  - `uv run ytx transcribe <url> --engine whispercpp --model /path/to/gguf-large-v3-turbo.bin`
-- Auto-prefer whisper.cpp when `device=metal` (if `whisper.cpp` binary is available):
-  - Set env `YTX_WHISPERCPP_BIN` to the `main` binary path, and provide a model path as above
-- Tuning (env or .env):
-  - `YTX_WHISPERCPP_NGL` (GPU layers, default 35), `YTX_WHISPERCPP_THREADS` (CPU threads)
+Configuration (copy `.env.example` → `.env`)
+- Cloud keys: `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
+- Engine defaults: `YTX_ENGINE`, `WHISPER_MODEL`
+- Engine options: `YTX_ENGINE_OPTS` (JSON), `YTX_PREFER_SDK=true` (prefer SDK for OpenAI/Deepgram)
+- Timeouts: `YTX_NETWORK_TIMEOUT`, `YTX_DOWNLOAD_TIMEOUT`, `YTX_TRANSCRIBE_TIMEOUT`, `YTX_SUMMARIZE_TIMEOUT`
+- Cache: `YTX_CACHE_DIR`, `YTX_CACHE_TTL_SECONDS|DAYS`
+- whisper.cpp: `YTX_WHISPERCPP_BIN`, `YTX_WHISPERCPP_NGL`, `YTX_WHISPERCPP_THREADS`
 
-Outputs
-- JSON (`<video_id>.json`): TranscriptDoc
-  - keys: `video_id, source_url, title, duration, language, engine, model, created_at, segments[]`
-  - segment: `{id, start, end, text, confidence?}` (seconds for time)
-- SRT (`<video_id>.srt`): line-wrapped captions (2 lines max)
+Outputs & cache
+- JSON: `<video_id>.json` (TranscriptDoc) — includes segments; optionally `chapters` and `summary`.
+- SRT: `<video_id>.srt` — wrapped captions.
+- Cache layout (XDG): `~/.cache/ytx/<video_id>/<engine>/<model>/<config_hash>/`
+  - `transcript.json`, `captions.srt`, `meta.json` (provenance), `summary.json` (if generated)
 
-Configuration (.env)
-- Copy `.env.example` → `.env`, then adjust:
-  - `YTX_ENGINE` (default `whisper`) and `WHISPER_MODEL` (e.g., `large-v3-turbo`)
-  - `GEMINI_API_KEY` (for Gemini transcription/summarization)
-  - `YTX_WHISPERCPP_BIN` and `YTX_WHISPERCPP_MODEL_PATH` for whisper.cpp
-  - Optional: `YTX_CACHE_DIR`, `YTX_OUTPUT_DIR`, concurrency and timeouts
+Apple Silicon (whisper.cpp)
+- Build: `make -j METAL=1` in whisper.cpp
+- Run: `ytx transcribe ... --engine whispercpp --model /path/to/model.gguf`
+- Tuning: `YTX_WHISPERCPP_NGL` (30–40 typical), `YTX_WHISPERCPP_THREADS`
 
-Restricted videos & cookies
-- Some videos are age/region restricted or private. The downloader supports cookies, but CLI flags are not yet wired.
-- Workarounds: run yt-dlp manually, or use the Python API (pass `cookies_from_browser` / `cookies_file` to downloader).
-- Error messages suggest cookies usage when restrictions are detected.
+Troubleshooting
+- “ffmpeg not found”: install FFmpeg and ensure it’s on PATH (see Requirements).
+- “Restricted / Private / Age‑restricted”: use cookies with yt‑dlp outside the tool to download audio locally, then run `ytx summarize-file` on the transcript.
+- “No module named ytx”: avoid running `ytx` from inside the `ytx/` folder; or use module form: `PYTHONPATH=ytx/src python -m ytx.cli …`
+- Gemini timestamps: best‑effort; prefer `--timestamps chunked` for reliable coarse timings.
 
-Performance Tips
-- faster‑whisper: `compute_type=auto` resolves to `int8` on CPU, `float16` on CUDA.
-- Model sizing: start with `small`/`medium`; use `large-v3(-turbo)` for best quality.
-- Metal (whisper.cpp): tune `-ngl` (30–40 typical on M‑series) and threads to maximize throughput.
+Useful commands
+- Health: `ytx health`
+- Update check: `ytx update-check`
+- Cache: `ytx cache ls | ytx cache stats | ytx cache clear --yes`
 
-Development
-- Structure: code in `src/ytx/`, CLI in `src/ytx/cli.py`, engines in `src/ytx/engines/`, exporters in `src/ytx/exporters/`.
-- Tests: `uv run pytest -q` (add tests under `ytx/tests/`).
-- Lint/format (if configured): `uv run ruff check .` / `uv run ruff format .`.
-
-Roadmap
-- Add VTT/TXT exporters, format selection (`--formats json,srt,vtt,txt`)
-- Chapters-aware transcription and summaries
-- Gemini transcription/summarization option
-- Caching and resume for repeat runs
+Contributing
+- Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
+- Run tests: `cd ytx && PYTHONPATH=src python -m pytest -q`
+- Lint (if configured): `ruff check .`
