@@ -25,7 +25,8 @@ except Exception:  # pragma: no cover
         return _json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
-Engine = Literal["whisper", "whispercpp", "gemini"]
+# Engines recognized by the CLI. Local: whisper/whispercpp; Cloud: gemini/openai/deepgram/elevenlabs
+Engine = Literal["whisper", "whispercpp", "gemini", "openai", "deepgram", "elevenlabs"]
 Device = Literal["cpu", "auto", "cuda", "metal"]
 ComputeType = Literal["auto", "int8", "int8_float16", "float16", "float32"]
 TimestampPolicy = Literal["native", "chunked", "none"]
