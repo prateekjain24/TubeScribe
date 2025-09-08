@@ -215,13 +215,25 @@ class GeminiEngine(CloudEngineBase, TranscriptionEngine):
                 resp = self._generate_with_retries(model, [file, prompt], timeout=getattr(config, 'transcribe_timeout', 600))
                 payload_text = self._extract_text_from_response(resp)
                 data = self._loads_json_loose(self._strip_code_fences(payload_text or "")) if payload_text else None
-                segs = self._parse_segments_from_data_or_text(data, payload_text, total_duration=(end - start))
-                # Offset by chunk start
+                segs = self._parse_segments_from_data_or_text(
+                    data, payload_text, total_duration=(end - start)
+                )
+                # Offset by chunk start without mutating validated models to avoid
+                # transient end<=start during assignment (pydantic validate_assignment).
                 for s in segs:
-                    s.start = float(start) + float(s.start)
-                    s.end = float(start) + float(s.end)
-                    s.id = len(segments_out)
-                    segments_out.append(s)
+                    new_start = float(start) + float(getattr(s, "start", 0.0) or 0.0)
+                    new_end = float(start) + float(getattr(s, "end", 0.0) or 0.0)
+                    if new_end <= new_start:
+                        new_end = new_start + 0.001
+                    segments_out.append(
+                        TranscriptSegment(
+                            id=len(segments_out),
+                            start=new_start,
+                            end=new_end,
+                            text=str(getattr(s, "text", "")).strip(),
+                            confidence=getattr(s, "confidence", None),
+                        )
+                    )
                 if on_progress:
                     try:
                         on_progress(min(1.0, (idx + 1) / n))

@@ -115,11 +115,21 @@ class OpenAIEngine(CloudEngineBase, TranscriptionEngine):
                 chunk = tdir / f"chunk_{idx:04d}.wav"
                 slice_wav_segment(audio_path, chunk, start=start, end=end)
                 segs = self._transcribe_single(chunk, config=config, on_progress=None)
+                # Avoid in-place mutation of validated models; construct new instances
                 for s in segs:
-                    s.start = float(start) + float(s.start)
-                    s.end = float(start) + float(s.end)
-                    s.id = len(segs_out)
-                    segs_out.append(s)
+                    new_start = float(start) + float(getattr(s, "start", 0.0) or 0.0)
+                    new_end = float(start) + float(getattr(s, "end", 0.0) or 0.0)
+                    if new_end <= new_start:
+                        new_end = new_start + 0.001
+                    segs_out.append(
+                        TranscriptSegment(
+                            id=len(segs_out),
+                            start=new_start,
+                            end=new_end,
+                            text=str(getattr(s, "text", "")).strip(),
+                            confidence=getattr(s, "confidence", None),
+                        )
+                    )
                 if on_progress:
                     try:
                         on_progress(min(1.0, (idx + 1) / max(1, len(ranges))))

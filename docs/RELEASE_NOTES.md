@@ -23,3 +23,11 @@ v0.2.2 (2025-09-08)
 --------------------
 - CLI health: add checks for `whisper_engine` (faster-whisper), `whispercpp_bin` presence, `yt-dlp`, and cloud provider keys (`OPENAI_API_KEY`, `DEEPGRAM_API_KEY`).
 - README: add Health Reference; make badges clickable; add downloads badge.
+
+v0.2.3 (2025-09-08)
+--------------------
+- Gemini (chunked): fix pydantic assignment error when offsetting chunked segments by constructing new TranscriptSegment instances instead of mutating in place.
+
+v0.2.4 (2025-09-08)
+--------------------
+- OpenAI/Deepgram (chunked): apply the same safe offset strategy (no in-place mutation) to prevent end<=start validation errors at chunk boundaries.
