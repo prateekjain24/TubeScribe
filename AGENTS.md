@@ -21,6 +21,8 @@ See IMP.md for the planned module breakdown (exporters, engines, downloader, aud
 - Common commands:
   - Transcribe (Whisper): `ytx transcribe <url> --engine whisper --model small`
   - Transcribe (Gemini): `ytx transcribe <url> --engine gemini --timestamps chunked --fallback`
+  - Transcribe (OpenAI): `ytx transcribe <url> --engine openai --timestamps native`
+  - Transcribe (Deepgram): `ytx transcribe <url> --engine deepgram --engine-opts '{"utterances":true,"smart_format":true}'`
   - Chapters + summaries: `ytx transcribe <url> --by-chapter --parallel-chapters --summarize-chapters --summarize`
   - Health check: `ytx health`
   - Summarize existing transcript: `ytx summarize-file /path/to/<id>.json --write`
@@ -58,6 +60,9 @@ See IMP.md for the planned module breakdown (exporters, engines, downloader, aud
 - Engines:
   - Whisper (faster‑whisper): device/compute auto, model cache, transcription, optional language detect.
   - Gemini: API key loading, model setup, chunking + stitching, best‑effort timestamps, retries with backoff, fallback to Whisper.
+  - OpenAI: SDK‑first (optional) via `openai` with HTTP fallback; verbose JSON segments parsed; chunked stitching for long audio.
+  - Deepgram: SDK‑first (optional) via `deepgram` with HTTP fallback; prefers utterances; chunked stitching for long audio.
+  - ElevenLabs: engine stub in place (STT pending stable SDK/REST details).
 - Chapters: parse from yt‑dlp; slice per chapter; parallel processing; offset and stitch; optional per‑chapter summaries.
 - Summaries: transcript‑level TL;DR + bullets with hierarchical summarization; cached to `summary.json`.
 - Errors & health: central error types, timeouts, error reports (sanitized), health checks, graceful interrupts, partial save.
@@ -69,4 +74,13 @@ See IMP.md for the planned module breakdown (exporters, engines, downloader, aud
 - yt‑dlp API vs CLI: prefer API for progress; fallback to CLI for resilience. Ensure `ffmpeg` exists before downloads/extracts.
 - Registry warm‑up: exporter manager lazily imports built‑ins to populate the registry before parsing format specs.
 - Avoid committing ad‑hoc artifacts (e.g., generated `.json/.srt`) to repo; keep outputs under a cache/artifacts dir.
- - Namespace shadowing: when inside the `ytx/` folder, `import ytx` may resolve to the folder, not the installed package. Prefer `python -m ytx.cli …` or run console scripts from repo root.
+- Namespace shadowing: when inside the `ytx/` folder, `import ytx` may resolve to the folder, not the installed package. Prefer `python -m ytx.cli …` or run console scripts from repo root.
+- Cloud SDKs are optional and lazily imported. Engines prefer SDK when `YTX_PREFER_SDK=true` or SDK is importable; otherwise they fall back to HTTP with retries. This keeps startup fast and behavior resilient.
+
+## Configuration Quick Reference
+- API keys (set via `.env` or environment):
+  - `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `GEMINI_API_KEY` (or `GOOGLE_API_KEY`), `ELEVENLABS_API_KEY`.
+- Engine selection/options:
+  - `YTX_ENGINE`, `YTX_ENGINE_OPTS` (JSON), `YTX_DEVICE`, `YTX_COMPUTE_TYPE`, `YTX_PREFER_SDK`.
+- Timeouts and cache:
+  - `YTX_NETWORK_TIMEOUT`, `YTX_DOWNLOAD_TIMEOUT`, `YTX_TRANSCRIBE_TIMEOUT`, `YTX_SUMMARIZE_TIMEOUT`, `YTX_CACHE_DIR`, `YTX_CACHE_TTL_SECONDS|DAYS`.
