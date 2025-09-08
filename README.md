@@ -1,11 +1,13 @@
-ytx — YouTube Transcriber (Whisper / Metal via whisper.cpp)
-==========================================================
+TubeScribe (ytx) — YouTube Transcriber (Whisper / Metal via whisper.cpp)
+=======================================================================
 
 CLI that downloads YouTube audio and produces transcripts and captions using:
 - Local Whisper (faster-whisper / CTranslate2)
 - Whisper.cpp (Metal acceleration on Apple Silicon)
 
-Managed with uv, using the `src` layout.
+Repository: https://github.com/prateekjain24/TubeScribe
+
+Managed with venv+pip (or uv), using the `src` layout.
 
 Features
 - One command: URL → audio → normalized WAV → transcript JSON + SRT captions

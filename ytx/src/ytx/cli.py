@@ -592,7 +592,7 @@ def summarize_file(
 
 
 @app.command("update-check")
-def update_check(repo: str = typer.Option("prateekjain24/YT_transcript", "--repo", help="GitHub repo to check")) -> None:
+def update_check(repo: str = typer.Option("prateekjain24/TubeScribe", "--repo", help="GitHub repo to check")) -> None:
     """Check for the latest release on GitHub and compare with local version."""
     import httpx
     current = _pkg_version()

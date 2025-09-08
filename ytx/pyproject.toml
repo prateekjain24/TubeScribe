@@ -26,9 +26,9 @@ dependencies = [
 ytx = "ytx.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/yourname/ytx"
-Repository = "https://github.com/yourname/ytx"
-Issues = "https://github.com/yourname/ytx/issues"
+Homepage = "https://github.com/prateekjain24/TubeScribe"
+Repository = "https://github.com/prateekjain24/TubeScribe"
+Issues = "https://github.com/prateekjain24/TubeScribe/issues"
 
 [build-system]
 requires = ["hatchling"]
