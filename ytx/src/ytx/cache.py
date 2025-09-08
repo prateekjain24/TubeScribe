@@ -400,7 +400,13 @@ def scan_cache(root: Path | None = None) -> list[CacheEntry]:
             cfg_hash = d.name
         except Exception:
             continue
-        paths = ArtifactPaths(dir=d, meta_json=d / META_JSON, transcript_json=d / TRANSCRIPT_JSON, captions_srt=d / CAPTIONS_SRT)
+        paths = ArtifactPaths(
+            dir=d,
+            meta_json=d / META_JSON,
+            transcript_json=d / TRANSCRIPT_JSON,
+            captions_srt=d / CAPTIONS_SRT,
+            summary_json=d / SUMMARY_JSON,
+        )
         if not artifacts_exist(paths):
             continue
         created_at: datetime | None = None

@@ -1,6 +1,6 @@
 [project]
 name = "tubescribe"
-version = "0.3.0"
+version = "0.3.1"
 description = "CLI to transcribe YouTube audio via Whisper (local) or Gemini (cloud)"
 readme = "README.md"
 authors = [
