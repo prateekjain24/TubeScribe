@@ -31,3 +31,13 @@ v0.2.3 (2025-09-08)
 v0.2.4 (2025-09-08)
 --------------------
 - OpenAI/Deepgram (chunked): apply the same safe offset strategy (no in-place mutation) to prevent end<=start validation errors at chunk boundaries.
+
+v0.3.0 (2025-09-08)
+--------------------
+- New: MarkdownExporter (`md`) to generate notes-ready Markdown files.
+  - Title with YouTube link, optional YAML frontmatter for Obsidian.
+  - Summary TL;DR + key bullets (when present).
+  - Chapter outline with clickable timestamps.
+  - Optional transcript section (off by default).
+- CLI: `ytx export` command to export from cache (`--video-id`) or from a TranscriptDoc JSON file (`--from-file`).
+- Docs: README and API updated with usage and options.

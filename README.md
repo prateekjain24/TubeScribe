@@ -133,6 +133,32 @@ Export Markdown notes
   - `--md-include-transcript` — append full transcript section (off by default)
   - `--md-include-chapters/--no-md-include-chapters` — include chapter outline (on by default)
 
+Example output (Markdown)
+```
+---
+title: Sample Title
+url: https://youtu.be/ABCDEFGHIJK
+date: 2025-09-08
+duration: 12:34
+engine: gemini
+model: gemini-2.5-flash
+tags: [youtube, transcript]
+---
+
+# [Sample Title](https://youtu.be/ABCDEFGHIJK)
+
+## Summary
+One‑paragraph TL;DR here
+
+## Key Points
+- Point A
+- Point B
+
+## Chapters
+### [0:00](https://youtu.be/ABCDEFGHIJK?t=0) Intro
+### [5:23](https://youtu.be/ABCDEFGHIJK?t=323) Main Topic
+```
+
 Contributing
 - Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
 - Run tests: `cd ytx && PYTHONPATH=src python -m pytest -q`
