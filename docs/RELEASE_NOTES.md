@@ -19,3 +19,7 @@ Notes
 - FFmpeg required on PATH for audio processing.
 - Optional: set `GEMINI_API_KEY`/`GOOGLE_API_KEY` for summaries.
 
+v0.2.2 (2025-09-08)
+--------------------
+- CLI health: add checks for `whisper_engine` (faster-whisper), `whispercpp_bin` presence, `yt-dlp`, and cloud provider keys (`OPENAI_API_KEY`, `DEEPGRAM_API_KEY`).
+- README: add Health Reference; make badges clickable; add downloads badge.

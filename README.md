@@ -1,10 +1,11 @@
 TubeScribe (ytx) — Fast YouTube Transcription & Captions
 ========================================================
 
-![PyPI](https://img.shields.io/pypi/v/tubescribe.svg)
-![Python](https://img.shields.io/pypi/pyversions/tubescribe.svg)
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![CI](https://github.com/prateekjain24/TubeScribe/actions/workflows/ci.yml/badge.svg?branch=main)
+[![PyPI](https://img.shields.io/pypi/v/tubescribe.svg)](https://pypi.org/project/tubescribe/)
+[![Python](https://img.shields.io/pypi/pyversions/tubescribe.svg)](https://pypi.org/project/tubescribe/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![CI](https://github.com/prateekjain24/TubeScribe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/prateekjain24/TubeScribe/actions)
+[![Downloads](https://img.shields.io/pypi/dm/tubescribe.svg)](https://pypistats.org/packages/tubescribe)
 
 Repository: https://github.com/prateekjain24/TubeScribe
 
@@ -105,6 +106,16 @@ Troubleshooting
 - “ytx: command not found”: ensure your Python scripts path is on PATH (e.g., `~/.local/bin` or pipx bin dir).
 - “No module named ytx”: avoid running `ytx` from inside the `ytx/` folder; or use module form: `PYTHONPATH=ytx/src python -m ytx.cli …`
 - Gemini timestamps: best‑effort; prefer `--timestamps chunked` for reliable coarse timings.
+
+Health Reference
+- ffmpeg: must be on PATH. macOS: `brew install ffmpeg`; Ubuntu: `sudo apt-get install -y ffmpeg`.
+- whisper_engine: “available” if `faster-whisper` import works; if not, reinstall: `pip install -U tubescribe`.
+- whispercpp_bin: “configured” if `YTX_WHISPERCPP_BIN` points to a valid binary; “present” if a `main` whisper.cpp binary exists on PATH; otherwise “absent”. Build whisper.cpp with Metal for Apple Silicon and set the env.
+- yt_dlp: check presence of `yt-dlp` executable; install via `pip install yt-dlp` or `brew install yt-dlp`.
+- gemini_api_key: set `GEMINI_API_KEY` or `GOOGLE_API_KEY` for summaries.
+- openai_api_key: set `OPENAI_API_KEY` (should start with `sk-`) for `--engine openai`.
+- deepgram_api_key: set `DEEPGRAM_API_KEY` for `--engine deepgram`.
+- network: basic internet reachability.
 
 Useful commands
 - Health: `ytx health`
