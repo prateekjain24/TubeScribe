@@ -2,6 +2,7 @@ TubeScribe (ytx) — Fast YouTube Transcription & Captions
 ========================================================
 
 [![PyPI](https://img.shields.io/pypi/v/tubescribe.svg)](https://pypi.org/project/tubescribe/)
+[![Release](https://img.shields.io/github/v/release/prateekjain24/TubeScribe?display_name=tag)](https://github.com/prateekjain24/TubeScribe/releases)
 [![Python](https://img.shields.io/pypi/pyversions/tubescribe.svg)](https://pypi.org/project/tubescribe/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![CI](https://github.com/prateekjain24/TubeScribe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/prateekjain24/TubeScribe/actions)
