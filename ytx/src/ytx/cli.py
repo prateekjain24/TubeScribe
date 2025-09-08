@@ -676,6 +676,8 @@ def export_notes(
         if not entries:
             raise typer.BadParameter(f"No cache found for video id: {video_id}")
         # pick latest by created_at, fallback to lexicographic dir
+        if len(entries) > 1:
+            console.print(f"[yellow]Found {len(entries)} cache branches for {video_id}; selecting most recent[/]")
         entries.sort(key=lambda e: (e.created_at or __import__('datetime').datetime.min.replace(tzinfo=None), str(e.dir)))
         entry = entries[-1]
         json_path = entry.dir / TRANSCRIPT_JSON

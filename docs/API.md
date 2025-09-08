@@ -53,7 +53,9 @@ modules most users and contributors will interact with.
   - `stitch_chapter_segments(...) -> list[TranscriptSegment]`
 
 - `ytx.exporters`:
-  - `JSONExporter`, `SRTExporter`; manager: `export_all(doc, out_dir, formats)` and `parse_formats("json,srt")`
+  - `JSONExporter`, `SRTExporter`, `MarkdownExporter` (name: `md`)
+  - Manager: `export_all(doc, out_dir, formats)` and `parse_formats("json,srt,md")`
+  - CLI: `ytx export --video-id <id> --to md --output-dir ./notes` writes `<id>.md` with optional frontmatter, summary, bullets, and chapter links.
 
 - `ytx.config`:
   - `AppConfig`: engine/model/language/device/compute_type
@@ -77,4 +79,3 @@ modules most users and contributors will interact with.
   with `@register_engine`, and support `engine_options` as needed.
 
 - Exporters: implement `FileExporter` and decorate with `@register_exporter`.
-

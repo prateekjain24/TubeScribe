@@ -123,6 +123,16 @@ Useful commands
 - Update check: `ytx update-check`
 - Cache: `ytx cache ls | ytx cache stats | ytx cache clear --yes`
 
+Export Markdown notes
+- From cached transcript by video id:
+  - `ytx export --video-id <VIDEOID> --to md --output-dir ./notes --md-frontmatter`
+- From a TranscriptDoc JSON file:
+  - `ytx export --from-file /path/to/<video_id>.json --to md --output-dir ./notes --md-frontmatter`
+- Options:
+  - `--md-link-style short|long` — youtu.be vs full URL
+  - `--md-include-transcript` — append full transcript section (off by default)
+  - `--md-include-chapters/--no-md-include-chapters` — include chapter outline (on by default)
+
 Contributing
 - Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
 - Run tests: `cd ytx && PYTHONPATH=src python -m pytest -q`
