@@ -70,14 +70,14 @@ def test_openai_chunked_offset_no_inplace(monkeypatch, tmp_path):
     monkeypatch.setattr('ytx.engines.openai_engine.compute_chunks', lambda total, window_seconds, overlap_seconds: [(0.0, 1.0), (1.0, 2.0)])
     monkeypatch.setattr('ytx.engines.openai_engine.slice_wav_segment', lambda src, dst, *, start, end: Path(dst).write_bytes(Path(src).read_bytes()) or Path(dst))
 
-    TS = importlib.import_module('ytx.models').TranscriptSegment
-
     def fake_single(path, *, config, on_progress=None):
-        # Return a segment with zero duration to trigger the offset guard
-        return [TS(id=0, start=0.0, end=0.0, text='x')]
+        # Return a minimal object with zero duration to trigger the offset guard
+        import types
+        return [types.SimpleNamespace(id=0, start=0.0, end=0.0, text='x', confidence=None)]
 
     monkeypatch.setattr(eng, '_transcribe_single', fake_single)
-    cfg = AppConfig(engine='openai', model='whisper-1')
+    # Use a valid engine literal to satisfy AppConfig; engine value isn't used here
+    cfg = AppConfig(engine='whisper', model='whisper-1')
     segs = eng._transcribe_chunked(wav, config=cfg, on_progress=None, window_seconds=1.0, overlap_seconds=0.0)
     assert segs and all(s.end > s.start for s in segs)
 
@@ -93,13 +93,11 @@ def test_deepgram_chunked_offset_no_inplace(monkeypatch, tmp_path):
     monkeypatch.setattr('ytx.engines.deepgram_engine.compute_chunks', lambda total, window_seconds, overlap_seconds: [(0.0, 1.0), (1.0, 2.0)])
     monkeypatch.setattr('ytx.engines.deepgram_engine.slice_wav_segment', lambda src, dst, *, start, end: Path(dst).write_bytes(Path(src).read_bytes()) or Path(dst))
 
-    TS = importlib.import_module('ytx.models').TranscriptSegment
-
     def fake_single(path, *, config, on_progress=None):
-        return [TS(id=0, start=0.0, end=0.0, text='x')]
+        import types
+        return [types.SimpleNamespace(id=0, start=0.0, end=0.0, text='x', confidence=None)]
 
     monkeypatch.setattr(eng, '_transcribe_single', fake_single)
-    cfg = AppConfig(engine='deepgram', model='nova-2')
+    cfg = AppConfig(engine='whisper', model='nova-2')
     segs = eng._transcribe_chunked(wav, config=cfg, on_progress=None, window_seconds=1.0, overlap_seconds=0.0)
     assert segs and all(s.end > s.start for s in segs)
-
