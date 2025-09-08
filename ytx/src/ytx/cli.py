@@ -11,6 +11,7 @@ from .audio import normalize_wav
 from .config import load_config
 from .engines.whisper_engine import WhisperEngine
 from .exporters.manager import parse_formats, export_all
+from .exporters.markdown_exporter import MarkdownExporter  # ensure importable for CLI wiring
 from .models import TranscriptDoc
 from .cache import (
     artifact_paths_for,
@@ -630,6 +631,79 @@ if __name__ == "__main__":
             raise SystemExit(1)
         except Exception:
             raise
+
+# --- Export notes ---
+@app.command("export")
+def export_notes(
+    video_id: str | None = typer.Option(None, "--video-id", help="Export from cache for this video id"),
+    from_file: Path | None = typer.Option(None, "--from-file", exists=True, dir_okay=False, file_okay=True, readable=True, help="Export from a TranscriptDoc JSON file"),
+    to: str = typer.Option("md", "--to", help="Export format (md only for now)"),
+    output_dir: Path = typer.Option(..., "--output-dir", exists=True, file_okay=False, dir_okay=True, writable=True, help="Directory to write outputs"),
+    md_frontmatter: bool = typer.Option(False, "--md-frontmatter/--no-md-frontmatter", help="Include YAML frontmatter in Markdown"),
+    md_link_style: str = typer.Option("short", "--md-link-style", help="YouTube link style: short|long"),
+    md_include_transcript: bool = typer.Option(False, "--md-include-transcript/--no-md-include-transcript", help="Append full transcript section"),
+    md_include_chapters: bool = typer.Option(True, "--md-include-chapters/--no-md-include-chapters", help="Include chapter outline"),
+    md_template: Path | None = typer.Option(None, "--md-template", exists=True, file_okay=True, dir_okay=False, readable=True, help="Optional template path for Markdown"),
+) -> None:
+    """Export notes (Markdown) from cache or an input TranscriptDoc JSON file."""
+    # Validate inputs
+    if (video_id is None and from_file is None) or (video_id is not None and from_file is not None):
+        raise typer.BadParameter("Provide exactly one of --video-id or --from-file")
+    if to != "md":
+        raise typer.BadParameter("Only --to md is supported in this version", param_hint=["--to"])
+    if md_link_style not in {"short", "long"}:
+        raise typer.BadParameter("--md-link-style must be short or long", param_hint=["--md-link-style"])
+
+    # Load TranscriptDoc
+    doc = None
+    if from_file is not None:
+        raw = from_file.read_text(encoding="utf-8")
+        try:
+            from .models import TranscriptDoc as _TD
+
+            doc = _TD.model_validate_json(raw)
+        except Exception:
+            import json as _json
+
+            payload = _json.loads(raw)
+            from .models import TranscriptDoc as _TD
+
+            doc = _TD.model_validate(payload)
+    else:
+        # Resolve latest cache entry for video_id and read transcript.json
+        from .cache import scan_cache, TRANSCRIPT_JSON
+        entries = [e for e in scan_cache() if e.video_id == video_id]
+        if not entries:
+            raise typer.BadParameter(f"No cache found for video id: {video_id}")
+        # pick latest by created_at, fallback to lexicographic dir
+        entries.sort(key=lambda e: (e.created_at or __import__('datetime').datetime.min.replace(tzinfo=None), str(e.dir)))
+        entry = entries[-1]
+        json_path = entry.dir / TRANSCRIPT_JSON
+        if not json_path.exists():
+            raise typer.BadParameter(f"Cached transcript.json not found at: {json_path}")
+        raw = json_path.read_text(encoding="utf-8")
+        try:
+            from .models import TranscriptDoc as _TD
+
+            doc = _TD.model_validate_json(raw)
+        except Exception:
+            import json as _json
+
+            payload = _json.loads(raw)
+            from .models import TranscriptDoc as _TD
+
+            doc = _TD.model_validate(payload)
+
+    # Export via MarkdownExporter
+    exp = MarkdownExporter(
+        frontmatter=md_frontmatter,
+        link_style=md_link_style,  # type: ignore[arg-type]
+        include_transcript=md_include_transcript,
+        include_chapters=md_include_chapters,
+        template=md_template,
+    )
+    path = exp.export(doc, output_dir)
+    console.print(f"[green]Wrote[/]: {path}")
 # Health checks
 @app.command("health")
 def health() -> None:
