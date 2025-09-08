@@ -31,10 +31,18 @@ This document orients contributors to the code layout, workflows, and practical 
 
 Tip (zsh): keep long commands on one line or use trailing `\` to avoid “command not found” for wrapped flags.
 
+## Feature Overview (0.3.x)
+- Markdown Export (md): notes‑ready output with optional YAML frontmatter, TL;DR + bullets, chapter outline with clickable timestamps; optional transcript section.
+- CLI Export: `ytx export --video-id <id> --to md --output-dir ./notes` or `--from-file <doc.json>`.
+- Auto‑Chapters: synthesize chapters when none exist via `--md-auto-chapters-min N`.
+- Cache Compatibility: honors both canonical names (`transcript.json`, `captions.srt`) and legacy names (`<video_id>.json/.srt`).
+- Health: ffmpeg, whisper engine import, whisper.cpp binary presence, yt‑dlp, and cloud key checks.
+
 ## Caching & Artifacts
 - Root: `~/.cache/ytx` (override with `YTX_CACHE_DIR`)
 - Layout: `<video_id>/<engine>/<model>/<config_hash>/`
 - Files: `transcript.json`, `captions.srt`, `meta.json`, `summary.json` (if generated), plus intermediate audio.
+- Legacy names supported: `<video_id>.json`, `<video_id>.srt` are recognized for export/listing.
 - `--output-dir` also writes JSON/SRT to a chosen folder (summary remains in cache).
 
 ## Engines
@@ -61,6 +69,8 @@ Chunked safety: for cloud engines we construct new segments when offsetting to a
 - Runner: `pytest -q` (CI runs on 3.11/3.12/3.13).
 - Unit tests emphasize exporters, chunking/stitching, config hash, downloader parsing.
 - Cloud engines are monkeypatched to avoid network; chunked offset regressions are covered in `tests/test_chunked_offset.py`.
+- Markdown exporter covered in `tests/test_export_md_exporter.py`, utils in `tests/test_export_md_utils.py`, CLI export in `tests/test_cli_export_md.py` and from‑cache in `tests/test_cli_export_md_cache.py`.
+- Auto‑chapters covered in `tests/test_export_md_auto_chapters.py`.
 
 ## CI & Release
 - CI: `.github/workflows/ci.yml` installs ffmpeg, installs the package, runs tests.

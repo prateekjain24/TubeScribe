@@ -134,6 +134,13 @@ Export Markdown notes
   - `--md-include-chapters/--no-md-include-chapters` — include chapter outline (on by default)
   - `--md-auto-chapters-min N` — if no chapters are present, synthesize outline every N minutes
 
+Notes-ready Markdown contents
+- Title linked to YouTube (short or full link style)
+- Optional YAML frontmatter (Obsidian-friendly): title, url, date, duration, engine, model, tags
+- Summary (TL;DR) and Key Points bullets (when present)
+- Chapter outline with clickable timestamps (native or synthesized)
+- Optional full transcript section with timestamped bullets
+
 Example output (Markdown)
 ```
 ---
@@ -159,6 +166,11 @@ One‑paragraph TL;DR here
 ### [0:00](https://youtu.be/ABCDEFGHIJK?t=0) Intro
 ### [5:23](https://youtu.be/ABCDEFGHIJK?t=323) Main Topic
 ```
+
+Troubleshooting export
+- “No cache found” when using `--video-id`: upgrade to `tubescribe>=0.3.3` and ensure both transcript and SRT exist in the branch. Legacy `<video_id>.json/.srt` are supported.
+- Always works: use `--from-file /path/to/<video_id>.json` to export from a specific cached TranscriptDoc.
+- For long commands in zsh, use trailing `\` per line to avoid “command not found”.
 
 Contributing
 - Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
