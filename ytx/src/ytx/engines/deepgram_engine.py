@@ -23,6 +23,9 @@ def _load_api_key() -> str:
 class DeepgramEngine(CloudEngineBase, TranscriptionEngine):
     name = "deepgram"
 
+    def _prefer_sdk(self) -> bool:
+        return os.environ.get("YTX_PREFER_SDK", "").lower() in ("1", "true", "yes")
+
     def transcribe(self, audio_path: Path, *, config: AppConfig, on_progress: Callable[[float], None] | None = None) -> list[TranscriptSegment]:
         window = 600.0
         overlap = 2.0
@@ -51,12 +54,16 @@ class DeepgramEngine(CloudEngineBase, TranscriptionEngine):
 
     def _transcribe_single(self, audio_path: Path, *, config: AppConfig, on_progress: Callable[[float], None] | None = None) -> list[TranscriptSegment]:
         key = _load_api_key()
+        # Try SDK first (optional), fallback to HTTP
+        if self._prefer_sdk():
+            segs = self._try_sdk_transcribe(audio_path, config=config)
+            if segs is not None:
+                return segs
         endpoint = self._endpoint(config)
         headers = {
             "Authorization": f"Token {key}",
             "Content-Type": "audio/wav",
         }
-        # Send as raw body
         data = Path(audio_path).read_bytes()
         r = self._http_post_with_retries(endpoint, headers=headers, data=data, timeout=getattr(config, 'transcribe_timeout', 600))
         try:
@@ -137,3 +144,50 @@ class DeepgramEngine(CloudEngineBase, TranscriptionEngine):
         except Exception:
             return 0.0
 
+    def _try_sdk_transcribe(self, audio_path: Path, *, config: AppConfig) -> list[TranscriptSegment] | None:
+        try:
+            # Deepgram SDK v3
+            from deepgram import DeepgramClient  # type: ignore
+        except Exception:
+            return None
+        try:
+            os.environ.setdefault("DEEPGRAM_API_KEY", _load_api_key())
+            client = DeepgramClient()  # type: ignore
+            # Options mapping
+            opts = config.engine_options or {}
+            options: dict[str, Any] = {}
+            if opts.get("utterances", True):
+                options["utterances"] = True
+            if opts.get("smart_format", True):
+                options["smart_format"] = True
+            if "model" in opts:
+                options["model"] = opts["model"]
+            # Read file and send
+            with open(audio_path, 'rb') as f:
+                buf = f.read()
+            # Some SDKs use: client.listen.prerecorded.v("1").transcribe_file
+            # Try a generic call signature; if it fails, fallback to HTTP.
+            try:
+                result = client.listen.prerecorded.v('1').transcribe_file(  # type: ignore[attr-defined]
+                    {'buffer': buf, 'mimetype': 'audio/wav'},
+                    options
+                )
+            except Exception:
+                return None
+        except Exception:
+            return None
+        # Extract JSON and parse utterances
+        try:
+            if hasattr(result, 'to_dict'):
+                payload = result.to_dict()  # type: ignore[attr-defined]
+            else:
+                payload = result  # assume dict
+        except Exception:
+            return None
+        segs = self._parse_deepgram_segments(payload)
+        if not segs:
+            alt = (((payload.get("results") or {}).get("channels") or [{}])[0].get("alternatives") or [{}])[0]
+            txt = alt.get("transcript", "").strip()
+            end = self._probe_duration_safe(audio_path)
+            return [TranscriptSegment(id=0, start=0.0, end=end or 0.001, text=txt)]
+        return segs
