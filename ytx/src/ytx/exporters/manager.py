@@ -18,6 +18,10 @@ def _ensure_registry_loaded() -> None:
         from . import srt_exporter  # noqa: F401
     except Exception:
         pass
+    try:
+        from . import markdown_exporter  # noqa: F401
+    except Exception:
+        pass
 
 
 def parse_formats(spec: str | None) -> list[str]:
