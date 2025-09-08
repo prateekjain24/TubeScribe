@@ -1,6 +1,11 @@
 TubeScribe (ytx) — Fast YouTube Transcription & Captions
 ========================================================
 
+![PyPI](https://img.shields.io/pypi/v/tubescribe.svg)
+![Python](https://img.shields.io/pypi/pyversions/tubescribe.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![CI](https://github.com/prateekjain24/TubeScribe/actions/workflows/ci.yml/badge.svg?branch=main)
+
 Repository: https://github.com/prateekjain24/TubeScribe
 
 
@@ -106,5 +111,4 @@ Contributing
 - Code lives under `ytx/src/ytx/` (CLI: `cli.py`). Tests under `ytx/tests/`.
 - Run tests: `cd ytx && PYTHONPATH=src python -m pytest -q`
 - Lint (if configured): `ruff check .`
-
 
