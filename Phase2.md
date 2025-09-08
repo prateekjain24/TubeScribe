@@ -1066,6 +1066,7 @@ Phase 2 is complete when:
   **Technical Notes:** Use `OPENAI_API_KEY` from environment
   **Dependencies:** Cloud base, chunking/stitching
   **Time:** 2 hours
+  **Status:** Done — Added `engines/openai_engine.py` with class `OpenAIEngine` and API key loading.
 
 ### OPENAI-002: Implement API Key Loading & Client Setup
 
@@ -1077,6 +1078,7 @@ Phase 2 is complete when:
   **Technical Notes:** Allow HTTP fallback if SDK absent
   **Dependencies:** OPENAI-001
   **Time:** 2 hours
+  **Status:** Done — Loads `OPENAI_API_KEY` from environment with light validation.
 
 ### OPENAI-003: Setup Model Configuration
 
@@ -1088,6 +1090,7 @@ Phase 2 is complete when:
   **Technical Notes:** Keep defaults provider-recommended; document overrides
   **Dependencies:** OPENAI-002
   **Time:** 2 hours
+  **Status:** Done — Defaults to `whisper-1`; respects `config.model` and `engine_options`.
 
 ### OPENAI-004: Prepare Input (Multipart Upload)
 
@@ -1099,6 +1102,7 @@ Phase 2 is complete when:
   **Technical Notes:** Reuse `compute_chunks` and `slice_wav_segment`
   **Dependencies:** OPENAI-003
   **Time:** 3 hours
+  **Status:** Done — Uses HTTP multipart (httpx) with retries; posts to `/v1/audio/transcriptions` with `response_format=verbose_json`.
 
 ### OPENAI-005: Implement Basic Transcription
 
@@ -1110,6 +1114,7 @@ Phase 2 is complete when:
   **Technical Notes:** Honor `timestamp_policy`
   **Dependencies:** OPENAI-004
   **Time:** 3 hours
+  **Status:** Done — Parses verbose JSON segments or falls back to plain text; honors `transcribe_timeout`.
 
 ### OPENAI-006: Add Response Parser
 
@@ -1121,6 +1126,7 @@ Phase 2 is complete when:
   **Technical Notes:** Tolerate plain text responses
   **Dependencies:** OPENAI-005
   **Time:** 3 hours
+  **Status:** Done — Converts segment list into monotonic `TranscriptSegment[]`; clamps overlaps.
 
 ### OPENAI-007: Add Chunk Processing Loop
 
@@ -1132,6 +1138,7 @@ Phase 2 is complete when:
   **Technical Notes:** Reuse `stitch_segments`
   **Dependencies:** OPENAI-006
   **Time:** 3 hours
+  **Status:** Done — Splits long audio into 10m chunks with 2s overlap; offsets and stitches segments.
 
 ### OPENAI-008: Wire Up CLI & Metadata
 
@@ -1143,6 +1150,7 @@ Phase 2 is complete when:
   **Technical Notes:** Respect cache key via `engine_options`
   **Dependencies:** OPENAI-007
   **Time:** 2 hours
+  **Status:** Done — CLI supports `--engine openai`; uses cache hash via `engine_options`.
 
 ### DEEPGRAM-001: Create Deepgram Engine Module
 
@@ -1154,6 +1162,7 @@ Phase 2 is complete when:
   **Technical Notes:** Use `DEEPGRAM_API_KEY` from environment
   **Dependencies:** Cloud base, chunking/stitching
   **Time:** 2 hours
+  **Status:** Done — Added `engines/deepgram_engine.py` with class `DeepgramEngine` and API key loading.
 
 ### DEEPGRAM-002: Implement Client & Options
 
@@ -1165,6 +1174,7 @@ Phase 2 is complete when:
   **Technical Notes:** Document recommended defaults
   **Dependencies:** DEEPGRAM-001
   **Time:** 2 hours
+  **Status:** Done — HTTP client via httpx; maps `engine_options` (model, smart_format, utterances) into query params.
 
 ### DEEPGRAM-003: Implement Pre-recorded Transcription Call
 
@@ -1176,6 +1186,7 @@ Phase 2 is complete when:
   **Technical Notes:** Honor `timestamp_policy`
   **Dependencies:** DEEPGRAM-002
   **Time:** 3 hours
+  **Status:** Done — Sends raw audio; retries/backoff; parses response.
 
 ### DEEPGRAM-004: Add Response Parser
 
@@ -1187,6 +1198,7 @@ Phase 2 is complete when:
   **Technical Notes:** Defer diarization to future tickets
   **Dependencies:** DEEPGRAM-003
   **Time:** 3 hours
+  **Status:** Done — Prefers `utterances` (start/end/transcript) as segments; clamps overlaps.
 
 ### DEEPGRAM-005: Add Chunk Processing Loop
 
@@ -1198,6 +1210,7 @@ Phase 2 is complete when:
   **Technical Notes:** Reuse shared utilities
   **Dependencies:** DEEPGRAM-004
   **Time:** 3 hours
+  **Status:** Done — Splits, offsets, and stitches chunk results.
 
 ### DEEPGRAM-006: Wire Up CLI & Metadata
 
@@ -1209,6 +1222,7 @@ Phase 2 is complete when:
   **Technical Notes:** Cache paths include engine options
   **Dependencies:** DEEPGRAM-005
   **Time:** 2 hours
+  **Status:** Done — CLI supports `--engine deepgram`.
 
 ### ELEVEN-001: Create ElevenLabs Engine Module
 
@@ -1220,6 +1234,7 @@ Phase 2 is complete when:
   **Technical Notes:** Use `ELEVENLABS_API_KEY` from environment
   **Dependencies:** Cloud base, chunking/stitching
   **Time:** 2 hours
+  **Status:** Done — Added `engines/eleven_engine.py` with class `ElevenLabsEngine` and API key loading stub.
 
 ### ELEVEN-002: Implement Client & Model Options
 
@@ -1231,6 +1246,7 @@ Phase 2 is complete when:
   **Technical Notes:** Document limitations of timestamp support
   **Dependencies:** ELEVEN-001
   **Time:** 2 hours
+  **Status:** Pending — To map `engine_options` to STT endpoint once stable docs are confirmed.
 
 ### ELEVEN-003: Implement Basic Transcription
 
@@ -1242,6 +1258,7 @@ Phase 2 is complete when:
   **Technical Notes:** Timeouts and clear errors
   **Dependencies:** ELEVEN-002
   **Time:** 3 hours
+  **Status:** Pending — To implement transcription call and parsing; currently raises clear not‑implemented error.
 
 ### ELEVEN-004: Add Response Parser
 
@@ -1253,6 +1270,7 @@ Phase 2 is complete when:
   **Technical Notes:** Tolerate partial/empty fields
   **Dependencies:** ELEVEN-003
   **Time:** 3 hours
+  **Status:** Pending — To parse timestamps if provided or fallback to chunked/none per policy.
 
 ### ELEVEN-005: Add Chunk Processing Loop
 
@@ -1264,6 +1282,7 @@ Phase 2 is complete when:
   **Technical Notes:** Reuse shared utilities
   **Dependencies:** ELEVEN-004
   **Time:** 3 hours
+  **Status:** Pending — To split/offset/stitch similar to other providers.
 
 ### ELEVEN-006: Wire Up CLI & Metadata
 
@@ -1275,3 +1294,4 @@ Phase 2 is complete when:
   **Technical Notes:** Cache separation via `engine_options`
   **Dependencies:** ELEVEN-005
   **Time:** 2 hours
+  **Status:** Done — CLI supports `--engine elevenlabs` and validates API key presence on use.

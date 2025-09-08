@@ -148,7 +148,7 @@ def transcribe(
     vid = extract_video_id(url)
     if not vid:
         raise typer.BadParameter("Invalid YouTube URL or video ID", param_hint=["url"])
-    allowed_engines = {"whisper", "whispercpp", "gemini"}
+    allowed_engines = {"whisper", "whispercpp", "gemini", "openai", "deepgram", "elevenlabs"}
     if engine not in allowed_engines:
         raise typer.BadParameter("Unsupported engine (supported: whisper)", param_hint=["engine"])
     if output_dir is not None and not output_dir.exists():
@@ -245,6 +245,18 @@ def transcribe(
         from .engines.gemini_engine import GeminiEngine
 
         eng = GeminiEngine()
+    elif engine == "openai":
+        from .engines.openai_engine import OpenAIEngine
+
+        eng = OpenAIEngine()
+    elif engine == "deepgram":
+        from .engines.deepgram_engine import DeepgramEngine
+
+        eng = DeepgramEngine()
+    elif engine == "elevenlabs":
+        from .engines.eleven_engine import ElevenLabsEngine
+
+        eng = ElevenLabsEngine()
     elif engine == "whispercpp" or (engine == "whisper" and cfg.device == "metal"):
         try:
             from .engines.whispercpp_engine import WhisperCppEngine
