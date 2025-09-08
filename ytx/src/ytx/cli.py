@@ -45,10 +45,14 @@ console = Console()
 
 
 def _pkg_version() -> str:
-    try:
-        return version("ytx")
-    except PackageNotFoundError:
-        return "0.1.0"
+    # Try distribution names: prefer 'tubescribe' (new dist), fall back to 'ytx'.
+    for dist in ("tubescribe", "ytx"):
+        try:
+            return version(dist)
+        except PackageNotFoundError:
+            continue
+    # Fallback when running from source without installed dist
+    return "0.2.1"
 
 
 @app.callback()

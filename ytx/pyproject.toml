@@ -1,7 +1,8 @@
 [project]
-name = "ytx"
-version = "0.1.0"
+name = "tubescribe"
+version = "0.2.1"
 description = "CLI to transcribe YouTube audio via Whisper (local) or Gemini (cloud)"
+readme = "README.md"
 authors = [
     { name = "Prateek", email = "19404752+prateekjain24@users.noreply.github.com" }
 ]
@@ -21,9 +22,39 @@ dependencies = [
     # Optional cloud engine (Gemini). Install when using --engine gemini.
     "google-generativeai>=0.7.2",
 ]
+keywords = [
+  "youtube",
+  "transcription",
+  "whisper",
+  "speech-to-text",
+  "caption",
+  "srt",
+  "cli",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Sound/Audio",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Utilities",
+]
 
 [project.scripts]
 ytx = "ytx.cli:app"
+tubescribe = "ytx.cli:app"
+
+[project.optional-dependencies]
+# Optional SDKs; HTTP fallbacks are used if these are absent
+openai = ["openai>=1.0.0"]
+deepgram = ["deepgram-sdk>=2.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/prateekjain24/TubeScribe"
@@ -40,6 +71,9 @@ include = [
   "pyproject.toml",
   "src/ytx/**",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ytx"]
 
 [tool.pytest.ini_options]
 testpaths = [
