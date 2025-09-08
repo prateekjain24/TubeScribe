@@ -177,7 +177,8 @@ def artifacts_exist(paths: ArtifactPaths) -> bool:
         return True
     # fallback to <video_id>.json/.srt
     try:
-        vid = paths.dir.parents[3].name
+        # <root>/<video_id>/<engine>/<model>/<hash>
+        vid = paths.dir.parents[2].name
     except Exception:
         vid = None
     if vid:
@@ -231,10 +232,14 @@ def read_transcript_doc(paths: ArtifactPaths) -> "TranscriptDoc":
         raw = _read_json_bytes(paths.transcript_json)
     except CacheError:
         # Fallback to <video_id>.json if present
+        vid = None
         try:
-            vid = paths.dir.parents[3].name
+            vid = paths.dir.parents[2].name
+        except Exception:
+            pass
+        if vid:
             raw = _read_json_bytes(paths.dir / f"{vid}.json")
-        except Exception as e:
+        else:
             raise
     try:
         payload = _loads_json(raw)
@@ -418,9 +423,10 @@ def scan_cache(root: Path | None = None) -> list[CacheEntry]:
     entries: list[CacheEntry] = []
     for d in iter_artifact_dirs(root):
         try:
-            video_id = d.parents[3].name
-            engine = d.parents[2].name
-            model = d.parents[1].name
+            # <root>/<video_id>/<engine>/<model>/<hash>
+            video_id = d.parents[2].name
+            engine = d.parents[1].name
+            model = d.parents[0].name
             cfg_hash = d.name
         except Exception:
             continue

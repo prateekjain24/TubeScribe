@@ -51,3 +51,8 @@ v0.3.3 (2025-09-08)
 --------------------
 - fix(cache): correct cache directory parsing (`<root>/<video>/<engine>/<model>/<hash>`) when deriving `video_id`, ensuring cache listings and exports find entries.
 - test(cache): add test to validate video_id parsing and cache scanning.
+
+v0.3.4 (2025-09-08)
+--------------------
+- feat(export-md): auto-chapters synthesis when missing (`--md-auto-chapters-min N`), generating a chapter outline at fixed intervals.
+- docs: README updated with auto-chapters option.
