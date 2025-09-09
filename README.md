@@ -27,7 +27,7 @@ Resources
 
 Quickstart (≈ 2 minutes)
 1) Prereqs
-- Python 3.11+
+- Python 3.10+
 - FFmpeg on PATH (check: `ffmpeg -version`)
 
 2) Install
@@ -35,7 +35,7 @@ Quickstart (≈ 2 minutes)
 - Verify: `ytx --version` or `tubescribe --version`
 
 Dev install (from source)
-- `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
+- `cd ytx && python3 -m venv .venv && source .venv/bin/activate`
 - `python -m pip install -U pip setuptools wheel`
 - `python -m pip install -e .`
 - Or without installing: from repo root → `export PYTHONPATH="$(pwd)/ytx/src" && cd ytx && python3 -m ytx.cli --help`

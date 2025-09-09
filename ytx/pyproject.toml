@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Prateek", email = "19404752+prateekjain24@users.noreply.github.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "faster-whisper>=1.2.0",
     "httpx>=0.28.1",
@@ -40,8 +40,10 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Multimedia :: Sound/Audio",
   "Topic :: Multimedia :: Video",
   "Topic :: Utilities",

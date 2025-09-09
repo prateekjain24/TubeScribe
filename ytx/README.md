@@ -30,7 +30,7 @@ Requirements
 Install (dev)
 
 - Option A: venv + pip (recommended)
-  - `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
+- `cd ytx && python3 -m venv .venv && source .venv/bin/activate`
   - `python -m pip install -U pip setuptools wheel`
   - `python -m pip install -e .`
   - `ytx --help`

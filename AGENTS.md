@@ -17,7 +17,7 @@ This document orients contributors to the code layout, workflows, and practical 
 - CLI (recommended): `pipx install tubescribe` (or `pip install tubescribe`)
   - Verify: `ytx --version` or `tubescribe --version`
 - Dev (editable):
-  - `cd ytx && python3.11 -m venv .venv && source .venv/bin/activate`
+  - `cd ytx && python3 -m venv .venv && source .venv/bin/activate`
   - `python -m pip install -U pip && python -m pip install -e .`
   - Run without install: `export PYTHONPATH="$(pwd)/ytx/src" && cd ytx && python -m ytx.cli --help`
 
