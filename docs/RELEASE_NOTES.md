@@ -56,3 +56,8 @@ v0.3.4 (2025-09-08)
 --------------------
 - feat(export-md): auto-chapters synthesis when missing (`--md-auto-chapters-min N`), generating a chapter outline at fixed intervals.
 - docs: README updated with auto-chapters option.
+
+v0.3.5 (2025-09-08)
+--------------------
+- feat(downloader): add `--max-download-abr-kbps` (default 96) to cap YouTube audio bitrate; reduces download size/time with no practical ASR loss.
+- config: `max_download_abr_kbps` added to AppConfig; format selector `bestaudio[abr<=N]/bestaudio` applied to yt‑dlp.

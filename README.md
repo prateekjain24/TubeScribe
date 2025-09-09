@@ -59,6 +59,7 @@ Common flags
 - `--model <name>` — engine model (e.g., small, large-v3-turbo, gemini-2.5-flash, whisper-1)
 - `--timestamps native|chunked|none` — timestamp policy (chunked recommended for LLM engines)
 - `--engine-opts '{"k":v}'` — provider options (e.g., Deepgram: `{"utterances":true,"smart_format":true}`)
+- `--max-download-abr-kbps <N>` — cap YouTube audio bitrate during download (default 96; set 0 to disable)
 - `--by-chapter --parallel-chapters --chapter-overlap 2.0` — process chapters in parallel
 - `--summarize --summarize-chapters` — overall TL;DR + bullets; per‑chapter summaries
 - `--output-dir ./artifacts` — write outputs outside the cache dir
