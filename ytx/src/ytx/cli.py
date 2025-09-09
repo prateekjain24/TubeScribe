@@ -152,6 +152,11 @@ def transcribe(
         "--max-download-abr-kbps",
         help="Cap YouTube audio bitrate (kbps) during download; set 0 to disable",
     ),
+    download_extract_audio: bool = typer.Option(
+        False,
+        "--download-extract-audio/--no-download-extract-audio",
+        help="Use yt-dlp to extract to a target audio format during download (extra re-encode)",
+    ),
 ) -> None:
     """Transcribe a YouTube video (stub)."""
     # CLI-008: Parameter validation
@@ -192,6 +197,7 @@ def transcribe(
         engine_options=opts,
         timestamp_policy=timestamps,
         max_download_abr_kbps=abr_cap,
+        download_extract_audio=download_extract_audio,
     )
     # Prepare artifact paths for this video/config
     paths = artifact_paths_for(video_id=vid, config=cfg, create=False)
@@ -247,7 +253,13 @@ def transcribe(
 
         # Stage 2: download audio
         with console.status("[bold green]Downloading audio…", spinner="dots"):
-            audio_path = download_audio(meta, outdir, timeout=cfg.download_timeout, max_abr_kbps=cfg.max_download_abr_kbps)
+            audio_path = download_audio(
+                meta,
+                outdir,
+                timeout=cfg.download_timeout,
+                max_abr_kbps=cfg.max_download_abr_kbps,
+                download_extract_audio=cfg.download_extract_audio,
+            )
 
         # Stage 3: normalize to WAV
         with console.status("[bold green]Normalizing audio…", spinner="dots"):

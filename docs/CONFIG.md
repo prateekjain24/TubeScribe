@@ -32,6 +32,7 @@ configuration can be set through `.env` (loaded automatically) or CLI options.
 - `--by-chapter --parallel-chapters --chapter-overlap`: chapter processing.
 - `--summarize --summarize-chapters`: summaries (overall/per‑chapter).
 - `--output-dir`, `--overwrite`: output location and caching.
+- `--max-download-abr-kbps`: select download bit rate (default 96)
 
 ## Configuration Hash and Reproducibility
 

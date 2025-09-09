@@ -336,17 +336,12 @@ def _download_audio_once(
         except Exception as e:  # fallback to subprocess for resilience
             logger.warning("yt-dlp API failed (%s); falling back to subprocess", e)
 
-    # Fallback: Use yt-dlp CLI to extract bestaudio and convert to target format via ffmpeg
+    # Fallback: Use yt-dlp CLI. Prefer pure download; optionally extract to target format.
     cmd = [
         "yt-dlp",
         "--no-playlist",
         "-f",
         _format_selector(max_abr_kbps),
-        "--extract-audio",
-        "--audio-format",
-        audio_format,
-        "--audio-quality",
-        audio_quality,
         "--continue",
         "--no-part",
         "--no-mtime",
@@ -354,6 +349,16 @@ def _download_audio_once(
         str(out_dir / "%(id)s.%(ext)s"),
         meta.url,
     ]
+    if overwrite:
+        cmd.append("--force-overwrites")
+    if download_extract_audio:
+        cmd[5:5] = [
+            "--extract-audio",
+            "--audio-format",
+            audio_format,
+            "--audio-quality",
+            audio_quality,
+        ]
     if cookies_from_browser:
         cmd.extend(["--cookies-from-browser", cookies_from_browser])
     if cookies_file:
@@ -425,6 +430,7 @@ def _download_audio_api(
     cookies_from_browser: str | None,
     cookies_file: str | None,
     max_abr_kbps: int | None,
+    download_extract_audio: bool,
 ) -> Path:
     """Download audio using yt-dlp's Python API with a Rich progress bar."""
     from rich.progress import Progress, BarColumn, TimeRemainingColumn, DownloadColumn, TransferSpeedColumn, TextColumn
@@ -473,14 +479,15 @@ def _download_audio_api(
         "format": _format_selector(max_abr_kbps),
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
         "progress_hooks": [hook],
-        "postprocessors": [
+    }
+    if download_extract_audio:
+        ydl_opts["postprocessors"] = [
             {
                 "key": "FFmpegExtractAudio",
                 "preferredcodec": audio_format,
                 "preferredquality": audio_quality,
             }
-        ],
-    }
+        ]
     if cookies_from_browser:
         ydl_opts["cookiesfrombrowser"] = cookies_from_browser
     if cookies_file:

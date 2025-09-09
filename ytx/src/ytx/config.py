@@ -59,6 +59,10 @@ class AppConfig(BaseSettings):
         default=96,
         description="Cap YouTube audio bitrate (kbps) during download; set to 0/None to disable",
     )
+    download_extract_audio: bool = Field(
+        default=False,
+        description="Use yt-dlp FFmpegExtractAudio postprocessor to extract to a target format at download time",
+    )
 
     # Later we can add cache/output dirs, concurrency, and API keys.
 
