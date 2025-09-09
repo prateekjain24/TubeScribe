@@ -54,6 +54,12 @@ class AppConfig(BaseSettings):
     whispercpp_ngl: int = Field(default=35, description="Number of layers to offload to GPU (Metal)")
     whispercpp_threads: int | None = Field(default=None, description="Threads for whisper.cpp; defaults to CPU count")
 
+    # Downloader controls
+    max_download_abr_kbps: int | None = Field(
+        default=96,
+        description="Cap YouTube audio bitrate (kbps) during download; set to 0/None to disable",
+    )
+
     # Later we can add cache/output dirs, concurrency, and API keys.
 
     # For now, only pick up variables starting with YTX_.

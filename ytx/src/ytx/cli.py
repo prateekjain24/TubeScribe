@@ -147,6 +147,11 @@ def transcribe(
         "--summarize/--no-summarize",
         help="Generate an overall transcript summary (uses Gemini)",
     ),
+    max_download_abr_kbps: int | None = typer.Option(
+        96,
+        "--max-download-abr-kbps",
+        help="Cap YouTube audio bitrate (kbps) during download; set 0 to disable",
+    ),
 ) -> None:
     """Transcribe a YouTube video (stub)."""
     # CLI-008: Parameter validation
@@ -179,7 +184,15 @@ def transcribe(
                 raise typer.BadParameter("Invalid JSON for --engine-opts", param_hint=["--engine-opts"])
     if timestamps not in {"native", "chunked", "none"}:
         raise typer.BadParameter("--timestamps must be one of native|chunked|none", param_hint=["--timestamps"])
-    cfg = load_config(engine=engine, model=model, engine_options=opts, timestamp_policy=timestamps)
+    # Normalize cap: treat <=0 as None
+    abr_cap = None if (max_download_abr_kbps is None or max_download_abr_kbps <= 0) else int(max_download_abr_kbps)
+    cfg = load_config(
+        engine=engine,
+        model=model,
+        engine_options=opts,
+        timestamp_policy=timestamps,
+        max_download_abr_kbps=abr_cap,
+    )
     # Prepare artifact paths for this video/config
     paths = artifact_paths_for(video_id=vid, config=cfg, create=False)
 
@@ -230,11 +243,11 @@ def transcribe(
     try:
         # Stage 1: metadata
         with console.status("[bold blue]Fetching metadata…", spinner="dots"):
-            meta = fetch_metadata(url, timeout=cfg.network_timeout)
+            meta = fetch_metadata(url, timeout=cfg.network_timeout, max_abr_kbps=cfg.max_download_abr_kbps)
 
         # Stage 2: download audio
         with console.status("[bold green]Downloading audio…", spinner="dots"):
-            audio_path = download_audio(meta, outdir, timeout=cfg.download_timeout)
+            audio_path = download_audio(meta, outdir, timeout=cfg.download_timeout, max_abr_kbps=cfg.max_download_abr_kbps)
 
         # Stage 3: normalize to WAV
         with console.status("[bold green]Normalizing audio…", spinner="dots"):

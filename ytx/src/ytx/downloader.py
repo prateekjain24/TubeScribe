@@ -107,17 +107,32 @@ class YTDLPError(ExternalToolError):
     """Raised when yt-dlp operations fail (populated in DOWNLOAD-002)."""
 
 
+def _format_selector(max_abr_kbps: int | None) -> str:
+    """Return yt-dlp format selector honoring an optional abr cap.
+
+    96 -> "bestaudio[abr<=96]/bestaudio"; None/0 -> "bestaudio/best".
+    """
+    try:
+        v = int(max_abr_kbps) if max_abr_kbps is not None else 0
+    except Exception:
+        v = 0
+    return f"bestaudio[abr<={v}]/bestaudio" if v > 0 else "bestaudio/best"
+
+
 def _build_yt_dlp_cmd(
     url: str,
     *,
     cookies_from_browser: str | None = None,
     cookies_file: str | None = None,
     quiet: bool = True,
+    max_abr_kbps: int | None = None,
 ) -> list[str]:
     cmd: list[str] = [
         "yt-dlp",
         "--no-playlist",
         "--no-download",
+        "-f",
+        _format_selector(max_abr_kbps),
         "--dump-json",
         "--no-warnings",
     ]
@@ -156,6 +171,7 @@ def fetch_metadata(
     timeout: int = 90,
     cookies_from_browser: str | None = None,
     cookies_file: str | None = None,
+    max_abr_kbps: int | None = None,
 ) -> VideoMetadata:
     """Fetch video metadata using yt-dlp --dump-json.
 
@@ -175,6 +191,7 @@ def fetch_metadata(
         cookies_from_browser=cookies_from_browser,
         cookies_file=cookies_file,
         quiet=True,
+        max_abr_kbps=max_abr_kbps,
     )
     logger.debug("Running yt-dlp: %s", " ".join(cmd))
     try:
@@ -233,6 +250,7 @@ def download_audio(
     cookies_from_browser: str | None = None,
     cookies_file: str | None = None,
     use_api: bool = True,
+    max_abr_kbps: int | None = None,
 ) -> Path:
     """Download best audio and extract to requested format.
 
@@ -272,6 +290,7 @@ def download_audio(
                 cookies_from_browser=cookies_from_browser,
                 cookies_file=cookies_file,
                 use_api=use_api,
+                max_abr_kbps=max_abr_kbps,
             )
             if not _is_nonempty_file(path):
                 raise YTDLPError(f"download produced empty file: {path}")
@@ -300,6 +319,7 @@ def _download_audio_once(
     cookies_from_browser: str | None,
     cookies_file: str | None,
     use_api: bool,
+    max_abr_kbps: int | None,
 ) -> Path:
     if use_api:
         try:
@@ -311,6 +331,7 @@ def _download_audio_once(
                 overwrite=overwrite,
                 cookies_from_browser=cookies_from_browser,
                 cookies_file=cookies_file,
+                max_abr_kbps=max_abr_kbps,
             )
         except Exception as e:  # fallback to subprocess for resilience
             logger.warning("yt-dlp API failed (%s); falling back to subprocess", e)
@@ -320,7 +341,7 @@ def _download_audio_once(
         "yt-dlp",
         "--no-playlist",
         "-f",
-        "bestaudio/best",
+        _format_selector(max_abr_kbps),
         "--extract-audio",
         "--audio-format",
         audio_format,
@@ -403,6 +424,7 @@ def _download_audio_api(
     overwrite: bool,
     cookies_from_browser: str | None,
     cookies_file: str | None,
+    max_abr_kbps: int | None,
 ) -> Path:
     """Download audio using yt-dlp's Python API with a Rich progress bar."""
     from rich.progress import Progress, BarColumn, TimeRemainingColumn, DownloadColumn, TransferSpeedColumn, TextColumn
@@ -448,7 +470,7 @@ def _download_audio_api(
         "nopart": True,
         "no_mtime": True,
         "overwrites": bool(overwrite),
-        "format": "bestaudio/best",
+        "format": _format_selector(max_abr_kbps),
         "outtmpl": str(out_dir / "%(id)s.%(ext)s"),
         "progress_hooks": [hook],
         "postprocessors": [
