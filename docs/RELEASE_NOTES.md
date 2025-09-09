@@ -61,3 +61,8 @@ v0.3.5 (2025-09-08)
 --------------------
 - feat(downloader): add `--max-download-abr-kbps` (default 96) to cap YouTube audio bitrate; reduces download size/time with no practical ASR loss.
 - config: `max_download_abr_kbps` added to AppConfig; format selector `bestaudio[abr<=N]/bestaudio` applied to yt‑dlp.
+
+v0.3.6 (2025-09-08)
+--------------------
+- feat(downloader): avoid extra re‑encode during download by default; convert to WAV once in normalization. New flag `--download-extract-audio` restores yt‑dlp postprocess when needed.
+- build: support Python 3.10–3.13; update classifiers and CI matrix; docs adjusted (Python 3.10+).
